@@ -1,13 +1,9 @@
 # env
 .vscode
 
-# build
-/es
-/build
-/.rpt2_cache
-
 # Cache
 tsconfig.tsbuildinfo
+/.rpt2_cache
 
 # Logs
 logs

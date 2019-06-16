@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+
+<head>
+  <title>AxAcrylic Demo - Axiom Design System</title>
+
+  <style>
+    .demo-block {
+      display: flex;
+      border-bottom: #aaa dashed 1px;
+    }
+
+    .demo {
+      width: 500px;
+      margin: 10px;
+      padding-top: 1em;
+    }
+
+    .code {
+      width: 100%;
+    }
+
+    .ax-acrylic-container {
+      width: 100%;
+      height: 200px;
+      position: relative;
+      background: url('./images/background.jpg');
+      background-size: cover;
+    }
+
+    ax-acrylic {
+      top: 50%;
+      left: 50%;
+      margin: -60px 0 0 -60px;
+      width: 120px;
+      height: 120px;
+      color: white;
+      text-align: center;
+      vertical-align: middle;
+      position: absolute;
+    }
+
+    .tint-color {
+      --acrylic-tint-color: white;
+    }
+
+    .tint-color>p {
+      color: black;
+    }
+
+    .tint-opacity {
+      --acrylic-tint-opacity: 0.45;
+    }
+
+    .noise-opacity {
+      --acrylic-noise-opacity: 0.3;
+    }
+
+    .blur {
+      --acrylic-blur: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Welcome to project Axiom!</h1>
+  <p>Project Axiom is a web component set which aims to combine good part of Fluent Design System and Material Design
+    to a single design language.</p>
+  <p>This repo contains code of Acrylic effect effect of Fluent design System.</p>
+
+  <section class="demo-block">
+    <div class="demo">
+      <div class="ax-acrylic-container">
+        <ax-acrylic>
+          <p>Acrylic!</p>
+        </ax-acrylic>
+      </div>
+    </div>
+    <div class="code">
+      <h2>General Button</h2>
+      <p>In order to use this component, we need to prepare some HTML:</p>
+      <pre>&lt;ax-pressure&gt;
+  &lt;button class=&quot;ax-pressure-button&quot;&gt;Hello&lt;/button&gt;
+&lt;/ax-pressure&gt;
+&lt;ax-pressure&gt;
+  &lt;button class=&quot;ax-pressure-button&quot;&gt;World&lt;/button&gt;
+&lt;/ax-pressure&gt;</pre>
+    </div>
+  </section>
+
+  <section class="demo-block">
+    <div class="demo">
+      <div class="ax-acrylic-container">
+        <ax-acrylic class="tint-color">
+          <p>Acrylic!</p>
+        </ax-acrylic>
+      </div>
+    </div>
+
+    <div class="code">
+      <h2>Tint Color</h2>
+      <pre>.my-tile-container{
+  --acrylic-tint-color: white;
+}</pre>
+    </div>
+  </section>
+
+  <section class="demo-block">
+    <div class="demo">
+      <div class="ax-acrylic-container">
+        <ax-acrylic class="tint-opacity">
+          <p>Acrylic!</p>
+        </ax-acrylic>
+      </div>
+    </div>
+
+    <div class="code">
+      <h2>Tint Opacity</h2>
+      <pre>.my-tile-container{
+  --acrylic-tint-opacity: 0.45;
+}</pre>
+    </div>
+  </section>
+
+  <section class="demo-block">
+    <div class="demo">
+      <div class="ax-acrylic-container">
+        <ax-acrylic class="noise-opacity">
+          <p>Acrylic!</p>
+        </ax-acrylic>
+      </div>
+    </div>
+
+    <div class="code">
+      <h2>Noise Opacity</h2>
+      <pre>.my-tile-container{
+  --acrylic-noise-opacity: 0.3;
+}</pre>
+    </div>
+  </section>
+
+  <section class="demo-block">
+    <div class="demo">
+      <div class="ax-acrylic-container">
+        <ax-acrylic class="blur">
+          <p>Acrylic!</p>
+        </ax-acrylic>
+      </div>
+    </div>
+
+    <div class="code">
+      <h2>Blur Radius</h2>
+      <pre>.my-tile-container{
+  --acrylic-blur: 5px;
+}</pre>
+    </div>
+  </section>
+
+  <script src="../../build/main.js"></script>
+  <script>AxAcrylic.register()</script>
+  <!-- <script type="module">
+    import { register } from 'https://unpkg.com/@ax-design/pressure/es/index.js';
+    register();
+  </script> -->
+</body>

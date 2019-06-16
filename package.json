@@ -1,0 +1,32 @@
+{
+    "name": "@ax-design/acrylic",
+    "version": "0.0.1",
+    "description": "Web component that implement acrylic texture of Axiom Design System.",
+    "main": "build/main.js",
+    "module": "es/index.js",
+    "typings": "es/index.d.ts",
+    "repository": "https://github.com/ax-design/acrylic",
+    "license": "MIT",
+    "sideEffects": false,
+    "devDependencies": {
+        "npm-run-all": "^4.1.5",
+        "rimraf": "^2.6.3",
+        "rollup": "^1.11.3",
+        "rollup-plugin-babel-minify": "^8.0.0",
+        "rollup-plugin-typescript2": "^0.21.0",
+        "typescript": "^3.4.5"
+    },
+    "scripts": {
+        "start": "npm-run-all --parallel start-tsc start-rollup",
+        "start-tsc": "tsc --watch",
+        "start-rollup": "rollup -c -w",
+        "build": "npm-run-all clean --parallel build-tsc build-rollup",
+        "build-tsc": "tsc",
+        "build-rollup": "rollup -c",
+        "clean": "rimraf ./es ./build",
+        "prepublishOnly": "npm run build"
+    },
+    "dependencies": {
+        "@types/resize-observer-browser": "^0.1.1"
+    }
+}

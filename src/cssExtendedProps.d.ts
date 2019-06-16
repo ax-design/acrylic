@@ -1,0 +1,4 @@
+
+interface CSSStyleDeclaration {
+  backdropFilter: string;
+}
