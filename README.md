@@ -10,12 +10,11 @@
   <a href="https://www.npmjs.com/package/@ax-design/acrylic"><img src="https://img.shields.io/npm/v/@ax-design/acrylic.svg" alt="npm version"></a>
   <a href="https://travis-ci.com/ax-design/acrylic"><img src="https://travis-ci.com/ax-design/acrylic.svg?branch=master" alt="CI Status"></a>
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT Licence" />
-
 </p>
 
-<!-- <p align="center">
-  <img src="https://raw.githubusercontent.com/ax-design/acrylic/master/docs/screen-record.gif" alt="Screenshot">
-</p> -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ax-design/acrylic/master/docs/screenshot.png" alt="Screenshot">
+</p>
 
 ## Installation
 
