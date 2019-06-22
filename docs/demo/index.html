@@ -2,7 +2,6 @@
 
 <head>
   <title>AxAcrylic Demo - Axiom Design System</title>
-
   <style>
     .demo-block {
       display: flex;
@@ -58,6 +57,11 @@
     .blur {
       --acrylic-blur: 5px;
     }
+
+    ax-acrylic.wide {
+      margin-left: -90px;
+      width: 180px;
+    }
   </style>
 </head>
 
@@ -65,8 +69,8 @@
   <h1>Welcome to project Axiom!</h1>
   <p>Project Axiom is a web component set which aims to combine good part of Fluent Design System and Material Design
     to a single design language.</p>
-  <p>This repo contains code of Acrylic effect effect of Fluent design System.</p>
-
+  <p>This repo contains code of Acrylic material of Fluent design System.</p>
+  <p>You can switch the <label><input type="checkbox" class="switch_width" /> width</label> of the Acrylic material in this demo.</p>
   <section class="demo-block">
     <div class="demo">
       <div class="ax-acrylic-container">
@@ -78,12 +82,9 @@
     <div class="code">
       <h2>General Button</h2>
       <p>In order to use this component, we need to prepare some HTML:</p>
-      <pre>&lt;ax-pressure&gt;
-  &lt;button class=&quot;ax-pressure-button&quot;&gt;Hello&lt;/button&gt;
-&lt;/ax-pressure&gt;
-&lt;ax-pressure&gt;
-  &lt;button class=&quot;ax-pressure-button&quot;&gt;World&lt;/button&gt;
-&lt;/ax-pressure&gt;</pre>
+      <pre>&lt;ax-acrylic&gt;
+  Acrylic!
+&lt;/ax-acrylic&gt;</pre>
     </div>
   </section>
 
@@ -157,6 +158,17 @@
 
   <script src="../../build/main.js"></script>
   <script>AxAcrylic.register()</script>
+  <script>
+    document.querySelector('.switch_width').addEventListener('change', (e) => {
+      [...document.querySelectorAll('ax-acrylic')].forEach(($el) => {
+        if (e.target.checked) {
+          $el.classList.add('wide');
+        } else {
+          $el.classList.remove('wide');
+        }
+      });
+    });
+  </script>
   <!-- <script type="module">
     import { register } from 'https://unpkg.com/@ax-design/pressure/es/index.js';
     register();
