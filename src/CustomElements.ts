@@ -35,7 +35,7 @@ export class AxAcrylic extends HTMLElement {
       #filter, #tint, #noise { pointer-events: none; }
       #noise { opacity: var(--acrylic-noise-opacity, 0.03); }
       #tint { background-color: var(--acrylic-tint-color, black); opacity: var(--acrylic-tint-opacity, 0.6); }
-      #tint.fallback { background-color: var(--acrylic-fallback-color, black); }
+      #tint.fallback { background-color: var(--acrylic-fallback-color, black); opacity: 1; }
       #filter { backdrop-filter: blur(var(--acrylic-blur, 25px)) saturate(var(--acrylic-saturate, 200%)) brightness(var(--acrylic-brightness, 95%)); }
       </style>`;
 
