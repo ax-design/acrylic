@@ -146,11 +146,6 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-11.13.10.tgz#4df59e5966b56f512bac98898bcbee5067411f0f"
   integrity sha512-leUNzbFTMX94TWaIKz8N15Chu55F9QSH+INKayQr5xpkasBQBRF3qQXfo3/dOnMU/dEIit+Y/SU8HyOjq++GwA==
 
-"@types/resize-observer-browser@^0.1.1":
-  version "0.1.1"
-  resolved "https://r.cnpmjs.org/@types/resize-observer-browser/download/@types/resize-observer-browser-0.1.1.tgz#9b7cdae9cdc8b1a7020ca7588018dac64c770866"
-  integrity sha1-m3za6c3IsacCDKdYgBjaxkx3CGY=
-
 acorn@^6.1.1:
   version "6.1.1"
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-6.1.1.tgz#7d25ae05bb8ad1f9b699108e1094ecd7884adc1f"
@@ -619,11 +614,6 @@ estree-walker@^0.6.0:
   version "0.6.0"
   resolved "https://registry.yarnpkg.com/estree-walker/-/estree-walker-0.6.0.tgz#5d865327c44a618dde5699f763891ae31f257dae"
   integrity sha512-peq1RfVAVzr3PU/jL31RaOjUKLoZJpObQWJJ+LgfcxDUifyLZ1RjPQZTl0pzj2uJ45b7A7XpyppXvxdEqzo4rw==
-
-estree-walker@^0.6.1:
-  version "0.6.1"
-  resolved "https://r.cnpmjs.org/estree-walker/download/estree-walker-0.6.1.tgz#53049143f40c6eb918b23671d1fe3219f3a1b362"
-  integrity sha1-UwSRQ/QMbrkYsjZx0f4yGfOhs2I=
 
 esutils@^2.0.2:
   version "2.0.2"
@@ -1289,13 +1279,6 @@ rollup-plugin-babel-minify@^8.0.0:
     babel-preset-minify "^0.5.0"
     sourcemap-codec "^1.4.3"
 
-rollup-plugin-string@^3.0.0:
-  version "3.0.0"
-  resolved "https://r.cnpmjs.org/rollup-plugin-string/download/rollup-plugin-string-3.0.0.tgz#fed2d6301fae1e59eb610957df757ef13fada3f0"
-  integrity sha1-/tLWMB+uHlnrYQlX33V+8T+to/A=
-  dependencies:
-    rollup-pluginutils "^2.4.1"
-
 rollup-plugin-typescript2@^0.21.0:
   version "0.21.0"
   resolved "https://registry.yarnpkg.com/rollup-plugin-typescript2/-/rollup-plugin-typescript2-0.21.0.tgz#cc61ed756ac6e68cb3c03f7ee78001346243ed54"
@@ -1313,13 +1296,6 @@ rollup-pluginutils@2.4.1:
   dependencies:
     estree-walker "^0.6.0"
     micromatch "^3.1.10"
-
-rollup-pluginutils@^2.4.1:
-  version "2.8.1"
-  resolved "https://r.cnpmjs.org/rollup-pluginutils/download/rollup-pluginutils-2.8.1.tgz#8fa6dd0697344938ef26c2c09d2488ce9e33ce97"
-  integrity sha1-j6bdBpc0STjvJsLAnSSIzp4zzpc=
-  dependencies:
-    estree-walker "^0.6.1"
 
 rollup@^1.11.3:
   version "1.11.3"

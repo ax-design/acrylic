@@ -1,5 +1,4 @@
 import { AxAcrylic } from './CustomElements.js';
-import acrylicWorklet from '../build/acrylic-worklet.js.txt';
 export function register() {
 
     if (window.ResizeObserver) {
@@ -47,14 +46,6 @@ export function register() {
                 initialValue: '95%',
                 inherits: true
             });
-            CSS.registerProperty({
-                name: '--acrylic-fallback',
-                syntax: '<custom-ident>',
-                initialValue: 'false',
-                inherits: true
-            });
-
-            CSS.paintWorklet.addModule(`data:application/javascript;charset=ut8,${encodeURIComponent(acrylicWorklet)}`);
         } else {
             console.warn('Your browser do NOT support `CSS.registerProperty` method, register failed!');
         }
