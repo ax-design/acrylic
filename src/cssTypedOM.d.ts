@@ -1,5 +1,8 @@
+type RegisterPaintType = (name: string, paintCtor: any) => void;
+
 interface Window {
-  CSS: CSS
+  CSS: CSS;
+  registerPaint: RegisterPaintType;
 }
 
 interface HTMLElement {
@@ -8,7 +11,12 @@ interface HTMLElement {
 
 interface CSS {
   px(value: number): CSSUnitValue;
-  registerProperty(rule: CSSPropertyRule): void
+  registerProperty(rule: CSSPropertyRule): void;
+  paintWorklet: PaintWorklet;
+}
+
+interface PaintWorklet {
+  addModule(x: string | Function): void;
 }
 
 interface CSSPropertyRule {
@@ -48,3 +56,14 @@ interface StylePropertyMap {
   set(stylePropertyName: string, value: CSSUnitValue | string): void,
 }
 
+interface PaintSize {
+  readonly width: number;
+  readonly height: number;
+}
+
+interface PaintCtor {
+  //static get(inputProperties: string[]): void;
+  paint(ctx: CanvasRenderingContext2D, size: PaintSize, properties: StylePropertyMap): void;
+}
+
+declare const registerPaint: RegisterPaintType;

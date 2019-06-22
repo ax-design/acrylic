@@ -146,11 +146,6 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-11.13.10.tgz#4df59e5966b56f512bac98898bcbee5067411f0f"
   integrity sha512-leUNzbFTMX94TWaIKz8N15Chu55F9QSH+INKayQr5xpkasBQBRF3qQXfo3/dOnMU/dEIit+Y/SU8HyOjq++GwA==
 
-"@types/resize-observer-browser@^0.1.1":
-  version "0.1.1"
-  resolved "https://r.cnpmjs.org/@types/resize-observer-browser/download/@types/resize-observer-browser-0.1.1.tgz#9b7cdae9cdc8b1a7020ca7588018dac64c770866"
-  integrity sha1-m3za6c3IsacCDKdYgBjaxkx3CGY=
-
 acorn@^6.1.1:
   version "6.1.1"
   resolved "https://registry.yarnpkg.com/acorn/-/acorn-6.1.1.tgz#7d25ae05bb8ad1f9b699108e1094ecd7884adc1f"

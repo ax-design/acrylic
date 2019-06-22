@@ -20,13 +20,11 @@
         "start": "npm-run-all --parallel start-tsc start-rollup",
         "start-tsc": "tsc --watch",
         "start-rollup": "rollup -c -w",
-        "build": "npm-run-all clean --parallel build-tsc build-rollup",
+        "build": "npm-run-all --parallel clean build-main build-tsc",
         "build-tsc": "tsc",
-        "build-rollup": "rollup -c",
+        "build-main": "rollup -c",
+        "build-rollup": "npm-run-all build-worklet build-main",
         "clean": "rimraf ./es ./build",
         "prepublishOnly": "npm run build"
-    },
-    "dependencies": {
-        "@types/resize-observer-browser": "^0.1.1"
     }
 }
