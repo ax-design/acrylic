@@ -69,8 +69,9 @@
   <h1>Welcome to project Axiom!</h1>
   <p>Project Axiom is a web component set which aims to combine good part of Fluent Design System and Material Design
     to a single design language.</p>
-  <p>This repo contains code of Acrylic material of Fluent design System.</p>
-  <p>You can switch the <label><input type="checkbox" class="switch_width" /> width</label> of the Acrylic material in this demo.</p>
+  <p>This repo contains code of Acrylic texture of Fluent design System.</p>
+  <p>You can switch the <label><input type="checkbox" class="switch_width" /> width</label> of the Acrylic texture in
+    this demo.</p>
   <section class="demo-block">
     <div class="demo">
       <div class="ax-acrylic-container">
@@ -156,8 +157,12 @@
     </div>
   </section>
 
-  <script src="../../build/main.js"></script>
-  <script>AxAcrylic.register()</script>
+  <!-- <script src="../../build/main.js"></script>
+  <script>AxAcrylic.register()</script> -->
+  <script type="module">
+    import { register } from 'https://unpkg.com/@ax-design/pressure/es/index.js';
+    register();
+  </script>
   <script>
     document.querySelector('.switch_width').addEventListener('change', (e) => {
       [...document.querySelectorAll('ax-acrylic')].forEach(($el) => {
@@ -169,8 +174,4 @@
       });
     });
   </script>
-  <!-- <script type="module">
-    import { register } from 'https://unpkg.com/@ax-design/pressure/es/index.js';
-    register();
-  </script> -->
 </body>
