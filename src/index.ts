@@ -1,8 +1,8 @@
 import { AxAcrylic } from './CustomElements.js';
 export function register() {
-
+    customElements.define(AxAcrylic.ElementName, AxAcrylic);
+    
     if (window.CSS && CSS.registerProperty) {
-        customElements.define(AxAcrylic.ElementName, AxAcrylic);
         CSS.registerProperty({
             name: '--acrylic-tint-color',
             syntax: '<color>',
