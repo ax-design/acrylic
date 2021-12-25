@@ -26,7 +26,14 @@
       background-size: cover;
     }
 
-    ax-acrylic {
+    .ax-acrylic-container2 {
+      width: 100%;
+      height: 200px;
+      background: url('./images/background.jpg');
+      background-size: cover;
+    }
+
+    ax-acrylic:not(.unset) {
       top: 50%;
       left: 50%;
       margin: -60px 0 0 -60px;
@@ -157,11 +164,26 @@
     </div>
   </section>
 
-  <!-- <script src="../../build/main.js"></script>
-  <script>AxAcrylic.register()</script> -->
+  <section class="demo-block">
+    <div class="demo">
+      <div class="ax-acrylic-container2">
+        <ax-acrylic class="unset" style="color: white;">
+          <p style="padding: 12px 24px;">It will fit the size of this p element.</p>
+        </ax-acrylic>
+      </div>
+    </div>
+
+    <div class="code">
+      <h2>Intrinsic sizing</h2>
+      <pre>It supports intrinsic sizing. You don't have to set parent to position: relative;</pre>
+    </div>
+  </section>
+
+  <script src="../../build/main.js"></script>
   <script type="module">
     import { register } from 'https://unpkg.com/@ax-design/acrylic/es/index.js';
-    register();
+    if (typeof AxAcrylic === 'object') AxAcrylic.register()
+    else register();
   </script>
   <script>
     document.querySelector('.switch_width').addEventListener('change', (e) => {
