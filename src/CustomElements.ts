@@ -32,6 +32,7 @@ export class AxAcrylic extends HTMLElement {
       :host([grid]) { display: grid; }
       :host([inline-grid]) { display: inline-grid; }
       #slot, #filter, #tint, #noise { top: 0; left: 0; width: 100%; height: 100%; position: absolute; }
+      #slot { position: relative; }
       #filter, #tint, #noise { pointer-events: none; }
       #noise { opacity: var(--acrylic-noise-opacity, 0.03); }
       #tint { background-color: var(--acrylic-tint-color, black); opacity: var(--acrylic-tint-opacity, 0.6); }
@@ -42,7 +43,7 @@ export class AxAcrylic extends HTMLElement {
     this.filter = this.root.querySelector('#filter') as HTMLDivElement;
     this.noise = this.root.querySelector('#noise') as HTMLDivElement;
     this.tint = this.root.querySelector('#tint') as HTMLDivElement;
-    
+
     if (!('backdropFilter' in document.documentElement.style)) {
       this.noise.attributeStyleMap.set('display', 'none');
       this.filter.attributeStyleMap.set('display', 'none');
