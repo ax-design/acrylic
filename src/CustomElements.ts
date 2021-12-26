@@ -1,4 +1,4 @@
-import noiseCanvasPromise from './noise';
+import noiseCanvasPromise from './noise.js';
 
 export class AxAcrylic extends HTMLElement {
   static readonly ElementName = 'ax-acrylic';

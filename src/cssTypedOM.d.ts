@@ -1,7 +1,6 @@
 type RegisterPaintType = (name: string, paintCtor: any) => void;
 
 interface Window {
-  CSS: CSS;
   registerPaint: RegisterPaintType;
 }
 
@@ -9,10 +8,10 @@ interface HTMLElement {
   computedStyleMap(): StylePropertyMap
 }
 
-interface CSS {
-  px(value: number): CSSUnitValue;
-  registerProperty(rule: CSSPropertyRule): void;
-  paintWorklet: PaintWorklet;
+declare namespace CSS {
+  function px(value: number): CSSUnitValue;
+  function registerProperty(rule: CSSPropertyRule): void;
+  var paintWorklet: PaintWorklet;
 }
 
 interface PaintWorklet {
