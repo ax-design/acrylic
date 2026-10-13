@@ -1,4 +1,5 @@
 // Browser checks for the acrylic layer. ?fallback=1 pretends backdrop-filter is unsupported.
+import { registerLayer } from '@ax-design/surface';
 import { register } from '../src/index.js';
 
 interface Check {
@@ -26,6 +27,29 @@ async function run() {
         const original = CSS.supports.bind(CSS);
         (CSS as any).supports = (p: string, v?: string) => (/backdrop-filter/.test(p) ? false : v === undefined ? original(p) : original(p, v));
     }
+    // A layer that paints outside the shape, like a shadow: it grows the paint box by --halo
+    // (more at the bottom) and fills it with one element.
+    registerLayer('halo', () => {
+        let box: HTMLElement | null = null;
+        return {
+            schema: [{ name: '--halo', syntax: { type: 'length' }, initial: '0px', inherits: false }],
+            static: true,
+            overflow: (v) => {
+                const h = v.length('--halo');
+                return [h, h, 2 * h, h];
+            },
+            attach(container) {
+                box = document.createElement('div');
+                box.className = 'halo';
+                box.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;';
+                container.appendChild(box);
+            },
+            detach() {
+                if (box && box.parentNode) box.parentNode.removeChild(box);
+            },
+            write: () => false,
+        };
+    });
     register();
     await frames(8);
     for (const id of ['a', 's']) {
@@ -48,7 +72,7 @@ async function run() {
             check(`${id}: noise texture set`, !!noise && /^url\("?data:image\/png/.test(noise.style.backgroundImage), noise ? noise.style.backgroundImage.slice(0, 30) : '');
         }
     }
-    // With a shadow the paint box is larger than the element; the frosted glass must still
+    // With a halo the paint box is larger than the element; the frosted glass must still
     // cover the element only.
     {
         const sh = document.getElementById('sh')!;
@@ -57,7 +81,7 @@ async function run() {
         const a = sh.getBoundingClientRect();
         const b = tint.getBoundingClientRect();
         const same = Math.abs(a.left - b.left) < 0.5 && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5;
-        check('sh: acrylic covers the element, not the shadow area', same, `${JSON.stringify(a.toJSON())} vs ${JSON.stringify(b.toJSON())}`);
+        check('sh: acrylic covers the element, not the halo area', same, `${JSON.stringify(a.toJSON())} vs ${JSON.stringify(b.toJSON())}`);
     }
     // Pressed and tilted: the acrylic elements tilt themselves, no ancestor in the shadow root
     // has a transform (Firefox renders the backdrop wrong under one inside position: sticky),
@@ -87,8 +111,8 @@ async function run() {
         }
         check(`${id}: no transformed ancestor`, flatAbove);
         // A rounded rectangle covers the element like the content; a mask covers the paint
-        // box like the shadow canvas.
-        const ref = (id === 'sh' ? root.querySelector('.content') : root.querySelector('.layer-shadow canvas')) as HTMLElement;
+        // box like the halo element.
+        const ref = (id === 'sh' ? root.querySelector('.content') : root.querySelector('.layer-halo .halo')) as HTMLElement;
         const a = ref.getBoundingClientRect();
         const b = tint.getBoundingClientRect();
         const err = Math.max(Math.abs(a.left - b.left), Math.abs(a.top - b.top), Math.abs(a.right - b.right), Math.abs(a.bottom - b.bottom));

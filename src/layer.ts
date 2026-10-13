@@ -123,7 +123,7 @@ export function createAcrylicLayer(): SurfaceLayer {
         lastShape = key;
         ownBox = !!radii;
         let mask = '';
-        // The layer box is the paint box, which other layers (a shadow) may make larger than
+        // The layer box is the paint box, which other layers (an elevation shadow) may make larger than
         // the element. A rounded rectangle covers the element's own box; a mask covers the
         // paint box and holds the outline in its coordinates.
         const box = radii && (paint.left || paint.top || paint.width !== frame.width || paint.height !== frame.height);
