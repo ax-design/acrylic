@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@ax-design/acrylic"><img src="https://img.shields.io/npm/v/@ax-design/acrylic.svg" alt="npm version"></a>
-  <a href="https://travis-ci.com/ax-design/acrylic"><img src="https://travis-ci.com/ax-design/acrylic.svg?branch=master" alt="CI Status"></a>
+  <a href="https://github.com/ax-design/acrylic/actions/workflows/ci.yml"><img src="https://github.com/ax-design/acrylic/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
   <img src="https://img.shields.io/badge/license-MIT-green.svg" alt="MIT Licence" />
 </p>
 
@@ -39,7 +39,7 @@ register();
 
 ## Usage
 
-To add a reveal effect on your web application, you need to wrap a `ax-acrylic` component with the component you want to add tile effect.
+To add an acrylic texture on your web application, you need to wrap a `ax-acrylic` component with the component you want to add acrylic texture.
 Here's an example:
 
 ```html
@@ -94,3 +94,52 @@ Acrylic component uses custom properties to manage the style of the tile effect.
 **Default:** `20px`
 
 **Description:** The radius of blur filter, The greater the radius means the deeper blur effect.
+
+### --acrylic-saturate
+
+**Type:** `<percentage>`
+
+**Default:** `200%`
+
+**Description:** The saturation of the blurred background.
+
+### --acrylic-brightness
+
+**Type:** `<percentage>`
+
+**Default:** `95%`
+
+**Description:** The brightness of the blurred background.
+
+## Shapes
+
+`ax-acrylic` runs on [Surface](https://github.com/ax-design/surface), so the texture follows the Surface shape properties, like `--ax-radius` or `--ax-corner-shape`:
+
+```css
+ax-acrylic {
+  --ax-radius: 16px;
+}
+```
+
+The texture is also a layer of `ax-surface`. Here's a tilting surface with acrylic and reveal highlight on the same shape:
+
+```html
+<ax-surface layers="acrylic reveal" style="--ax-radius: 16px; --ax-tilt-mode: absolute">
+  Hello
+</ax-surface>
+```
+
+## Changes in 0.1
+
+* Acrylic runs on Surface and can be shaped with the `--ax-*` properties.
+* Safari uses the blur now, it used to fall back to the plain color because only `-webkit-backdrop-filter` is available there.
+* It works in Firefox, and in browsers without `CSS.registerProperty` or `createImageBitmap`.
+
+## Development
+
+```bash
+bun install
+bun run build         # es/, build/index.mjs, build/main.js
+bun run check         # type check
+bun run test:browser  # browser tests
+```

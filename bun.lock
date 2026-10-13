@@ -1,0 +1,34 @@
+{
+  "lockfileVersion": 2,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "@ax-design/acrylic",
+      "dependencies": {
+        "@ax-design/shape": "^0.1.0",
+        "@ax-design/surface": "^0.1.0",
+        "@ax-design/typed-om": "^0.1.0",
+      },
+      "devDependencies": {
+        "playwright": "^1.64.0",
+        "pngjs": "7.0.0",
+        "typescript": "^5.6.0",
+      },
+    },
+  },
+  "packages": {
+    "@ax-design/shape": ["@ax-design/shape@0.1.0", "", {}, "sha512-msBEtWIASB1Ru/mtMROdJ7PAkyABjfha/DPsXnMPlIb8L1TKOsRr6X5DO2UdF9TyCYNeJN6LGcVNhTL3nMQ5nw=="],
+
+    "@ax-design/surface": ["@ax-design/surface@0.1.0", "", { "dependencies": { "@ax-design/shape": "^0.1.0", "@ax-design/typed-om": "^0.1.0" } }, "sha512-34Szn8kSVlMpQzXOLoRND+nK4/stwqpEUZ/5MIFlmxuGN9sfmVqEU9nId6YPS+ivPyJ7bxGIdNgGHm3d++CDPQ=="],
+
+    "@ax-design/typed-om": ["@ax-design/typed-om@0.1.0", "", {}, "sha512-v3I8wDLMFbWDN9cZkDpy9qYonMQfqUU0DIL9DOChTO3dBRzWUk/taZZBUgmNTkA0kvn+g5NbB7pGcSuQAbz9cA=="],
+
+    "playwright": ["playwright@1.64.0", "", { "dependencies": { "playwright-core": "1.64.0" }, "bin": { "playwright": "cli.js" } }, "sha512-kVzTnYFYEyQ9RGzBjNCd2+yEqWmVbxl3AHPynv3qQ6JTjv4a+kwRcnqQwIpuP3NnrnIrE/Q6wWAIAvMfIE2/Yg=="],
+
+    "playwright-core": ["playwright-core@1.64.0", "", { "bin": { "playwright-core": "cli.js" } }, "sha512-T9r+MZkTECl2+oUcZ26YgZzTrYidTsIhYYkJix+6iDOymOb1FB2RLLSOxRGnZGv5DStt+aduIVbt+E8WygXYpg=="],
+
+    "pngjs": ["pngjs@7.0.0", "", {}, "sha512-LKWqWJRhstyYo9pGvgor/ivk2w94eSjE3RGVuzLGlr3NmD8bf7RcYGze1mNdEHRP6TRP6rMuDHk5t44hnTRyow=="],
+
+    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+  }
+}

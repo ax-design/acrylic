@@ -179,11 +179,9 @@
     </div>
   </section>
 
-  <script src="../../build/main.js"></script>
   <script type="module">
-    import { register } from 'https://unpkg.com/@ax-design/acrylic/es/index.js';
-    if (typeof AxAcrylic === 'object') AxAcrylic.register()
-    else register();
+    import { register } from '../../build/index.mjs';
+    register();
   </script>
   <script>
     document.querySelector('.switch_width').addEventListener('change', (e) => {
