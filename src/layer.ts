@@ -10,7 +10,8 @@ import { toSvgPath } from '@ax-design/shape';
 
 const STYLE = `
 .acrylic-filter, .acrylic-tint, .acrylic-noise {
-  position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; border-radius: var(--acrylic-shape-radius, 0);
+  position: absolute; pointer-events: none; border-radius: var(--acrylic-shape-radius, 0);
+  left: var(--acrylic-box-left, 0); top: var(--acrylic-box-top, 0); width: var(--acrylic-box-width, 100%); height: var(--acrylic-box-height, 100%);
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
 .acrylic-noise { opacity: var(--acrylic-noise-opacity, 0.03); }
@@ -138,15 +139,28 @@ export function createAcrylicLayer(): SurfaceLayer {
             const { paint } = frame;
             const radii = roundedRectRadii(frame.shape.outline, frame.width, frame.height);
             const d = radii ? '' : toSvgPath(shifted(frame.shape.outline, -paint.left, -paint.top));
-            const key = radii ? `radius ${radii.join(' ')}` : `${paint.width} ${paint.height} ${d}`;
+            const key = radii ? `radius ${radii.join(' ')} ${paint.left} ${paint.top} ${paint.width} ${paint.height}` : `${paint.width} ${paint.height} ${d}`;
             if (key === lastShape) return false;
             lastShape = key;
             let mask = '';
+            // The layer box is the paint box, which other layers (a shadow) may make larger than
+            // the element. A rounded rectangle covers the element's own box; a mask covers the
+            // paint box and holds the outline in its coordinates.
+            const box = radii && (paint.left || paint.top || paint.width !== frame.width || paint.height !== frame.height);
+            const rs = root.style;
             if (radii) {
-                root.style.setProperty('--acrylic-shape-radius', radii.map((r) => `${r}px`).join(' '));
+                rs.setProperty('--acrylic-shape-radius', radii.map((r) => `${r}px`).join(' '));
             } else {
-                root.style.removeProperty('--acrylic-shape-radius');
+                rs.removeProperty('--acrylic-shape-radius');
                 mask = maskImage(d, paint.width, paint.height);
+            }
+            if (box) {
+                rs.setProperty('--acrylic-box-left', `${-paint.left}px`);
+                rs.setProperty('--acrylic-box-top', `${-paint.top}px`);
+                rs.setProperty('--acrylic-box-width', `${frame.width}px`);
+                rs.setProperty('--acrylic-box-height', `${frame.height}px`);
+            } else {
+                for (const name of ['left', 'top', 'width', 'height']) rs.removeProperty(`--acrylic-box-${name}`);
             }
             for (const e of elements) {
                 const s = e.style;

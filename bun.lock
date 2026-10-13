@@ -6,7 +6,7 @@
       "name": "@ax-design/acrylic",
       "dependencies": {
         "@ax-design/shape": "^0.1.0",
-        "@ax-design/surface": "^0.1.1",
+        "@ax-design/surface": "^0.1.2",
         "@ax-design/typed-om": "^0.1.0",
       },
       "devDependencies": {
@@ -19,7 +19,7 @@
   "packages": {
     "@ax-design/shape": ["@ax-design/shape@0.1.0", "", {}, "sha512-msBEtWIASB1Ru/mtMROdJ7PAkyABjfha/DPsXnMPlIb8L1TKOsRr6X5DO2UdF9TyCYNeJN6LGcVNhTL3nMQ5nw=="],
 
-    "@ax-design/surface": ["@ax-design/surface@0.1.1", "", { "dependencies": { "@ax-design/shape": "^0.1.0", "@ax-design/typed-om": "^0.1.0" } }, "sha512-uWptfrznRWyCQwqlHNPlJ4kO175tb3ehDE1C2asPanxRZrLWcfeIn1fKHqGMTQMpMAiGnzqxnOEFHLVnfX6a+A=="],
+    "@ax-design/surface": ["@ax-design/surface@0.1.2", "", { "dependencies": { "@ax-design/shape": "^0.1.0", "@ax-design/typed-om": "^0.1.0" } }, "sha512-c4eoH/X4V8VYFPtLBYhX+VGFpYxDQkQFagXQ4DtH1IOHiH46jGO8iJATnE2z5pwGdrB/5ipXbLh+bC9vi7Vx1A=="],
 
     "@ax-design/typed-om": ["@ax-design/typed-om@0.1.0", "", {}, "sha512-v3I8wDLMFbWDN9cZkDpy9qYonMQfqUU0DIL9DOChTO3dBRzWUk/taZZBUgmNTkA0kvn+g5NbB7pGcSuQAbz9cA=="],
 

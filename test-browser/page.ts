@@ -48,6 +48,17 @@ async function run() {
             check(`${id}: noise texture set`, !!noise && /^url\("?data:image\/png/.test(noise.style.backgroundImage), noise ? noise.style.backgroundImage.slice(0, 30) : '');
         }
     }
+    // With a shadow the paint box is larger than the element; the frosted glass must still
+    // cover the element only.
+    {
+        const sh = document.getElementById('sh')!;
+        // The tint is shown in both modes (the blur element is hidden in the fallback).
+        const tint = sh.shadowRoot!.querySelector('.acrylic-tint') as HTMLElement;
+        const a = sh.getBoundingClientRect();
+        const b = tint.getBoundingClientRect();
+        const same = Math.abs(a.left - b.left) < 0.5 && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5;
+        check('sh: acrylic covers the element, not the shadow area', same, `${JSON.stringify(a.toJSON())} vs ${JSON.stringify(b.toJSON())}`);
+    }
     const rect = (id: string) => document.getElementById(id)!.getBoundingClientRect().toJSON();
     return { userAgent: navigator.userAgent, checks, rects: { a: rect('a'), s: rect('s') }, dpr: devicePixelRatio, fallback };
 }
