@@ -59,6 +59,44 @@ async function run() {
         const same = Math.abs(a.left - b.left) < 0.5 && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5;
         check('sh: acrylic covers the element, not the shadow area', same, `${JSON.stringify(a.toJSON())} vs ${JSON.stringify(b.toJSON())}`);
     }
+    // Pressed and tilted: the acrylic elements tilt themselves, no ancestor in the shadow root
+    // has a transform (Firefox renders the backdrop wrong under one inside position: sticky),
+    // and they land where the other layers and the content land.
+    for (const id of ['sh', 'm']) {
+        const el = document.getElementById(id)!;
+        el.style.setProperty('--ax-tilt-mode', 'absolute');
+        el.style.setProperty('--ax-tilt-depth', '30px');
+        el.style.setProperty('--ax-tilt-perspective', '300px');
+        await frames(4);
+        const r = el.getBoundingClientRect();
+        const x = r.left + r.width - 6;
+        const y = r.top + 6;
+        const init = { clientX: x, clientY: y, bubbles: true, composed: true, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1 };
+        window.dispatchEvent(new PointerEvent('pointermove', init));
+        el.dispatchEvent(new PointerEvent('pointerdown', init));
+        await frames(8);
+        const root = el.shadowRoot!;
+        const tint = root.querySelector('.acrylic-tint') as HTMLElement;
+        const transform = getComputedStyle(tint).transform;
+        check(`${id}: pressed acrylic tilts`, transform !== 'none', transform);
+        let parent = tint.parentNode;
+        let flatAbove = true;
+        while (parent && parent !== root) {
+            if (parent instanceof HTMLElement && getComputedStyle(parent).transform !== 'none') flatAbove = false;
+            parent = parent.parentNode;
+        }
+        check(`${id}: no transformed ancestor`, flatAbove);
+        // A rounded rectangle covers the element like the content; a mask covers the paint
+        // box like the shadow canvas.
+        const ref = (id === 'sh' ? root.querySelector('.content') : root.querySelector('.layer-shadow canvas')) as HTMLElement;
+        const a = ref.getBoundingClientRect();
+        const b = tint.getBoundingClientRect();
+        const err = Math.max(Math.abs(a.left - b.left), Math.abs(a.top - b.top), Math.abs(a.right - b.right), Math.abs(a.bottom - b.bottom));
+        check(`${id}: tilted acrylic lines up with the other layers`, err < 0.5, `err=${err.toFixed(3)}`);
+        window.dispatchEvent(new PointerEvent('pointerup', { ...init, buttons: 0 }));
+        await frames(8);
+        check(`${id}: released acrylic returns flat`, getComputedStyle(tint).transform === 'none', getComputedStyle(tint).transform);
+    }
     const rect = (id: string) => document.getElementById(id)!.getBoundingClientRect().toJSON();
     return { userAgent: navigator.userAgent, checks, rects: { a: rect('a'), s: rect('s') }, dpr: devicePixelRatio, fallback };
 }

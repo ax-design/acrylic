@@ -4,6 +4,8 @@
 // Rounded rectangles use border-radius. Other shapes use a mask of the outline, not clip-path:
 // Chromium ignores an element's clip-path for its backdrop-filter when an ancestor clips its
 // overflow with a border-radius (a rounded card), and filters the whole box.
+// The tilt goes on the elements too: inside position: sticky, Firefox renders a backdrop-filter
+// under an animated 3D transform of an ancestor with the wrong backdrop.
 import type { SurfaceFrame, SurfaceLayer } from '@ax-design/surface';
 import type { Contour, Segment } from '@ax-design/shape';
 import { toSvgPath } from '@ax-design/shape';
@@ -13,6 +15,7 @@ const STYLE = `
   position: absolute; pointer-events: none; border-radius: var(--acrylic-shape-radius, 0);
   left: var(--acrylic-box-left, 0); top: var(--acrylic-box-top, 0); width: var(--acrylic-box-width, 100%); height: var(--acrylic-box-height, 100%);
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  transform: var(--acrylic-tilt, none); transform-origin: var(--acrylic-tilt-origin, 50% 50%);
 }
 .acrylic-noise { opacity: var(--acrylic-noise-opacity, 0.03); }
 .acrylic-tint { background-color: var(--acrylic-tint-color, black); opacity: var(--acrylic-tint-opacity, 0.6); }
@@ -107,9 +110,62 @@ export function createAcrylicLayer(): SurfaceLayer {
     let elements: HTMLElement[] = [];
     let root: HTMLElement | null = null;
     let lastShape = '';
+    let lastTilt = '';
+    // The elements cover the element's own box (rounded rectangle) or the paint box (mask).
+    let ownBox = true;
+
+    const writeShape = (frame: SurfaceFrame, rs: CSSStyleDeclaration) => {
+        const { paint } = frame;
+        const radii = roundedRectRadii(frame.shape.outline, frame.width, frame.height);
+        const d = radii ? '' : toSvgPath(shifted(frame.shape.outline, -paint.left, -paint.top));
+        const key = radii ? `radius ${radii.join(' ')} ${paint.left} ${paint.top} ${paint.width} ${paint.height}` : `${paint.width} ${paint.height} ${d}`;
+        if (key === lastShape) return;
+        lastShape = key;
+        ownBox = !!radii;
+        let mask = '';
+        // The layer box is the paint box, which other layers (a shadow) may make larger than
+        // the element. A rounded rectangle covers the element's own box; a mask covers the
+        // paint box and holds the outline in its coordinates.
+        const box = radii && (paint.left || paint.top || paint.width !== frame.width || paint.height !== frame.height);
+        if (radii) {
+            rs.setProperty('--acrylic-shape-radius', radii.map((r) => `${r}px`).join(' '));
+        } else {
+            rs.removeProperty('--acrylic-shape-radius');
+            mask = maskImage(d, paint.width, paint.height);
+        }
+        if (box) {
+            rs.setProperty('--acrylic-box-left', `${-paint.left}px`);
+            rs.setProperty('--acrylic-box-top', `${-paint.top}px`);
+            rs.setProperty('--acrylic-box-width', `${frame.width}px`);
+            rs.setProperty('--acrylic-box-height', `${frame.height}px`);
+        } else {
+            for (const name of ['left', 'top', 'width', 'height']) rs.removeProperty(`--acrylic-box-${name}`);
+        }
+        for (const e of elements) {
+            const s = e.style;
+            s.setProperty('-webkit-mask-image', mask);
+            s.setProperty('mask-image', mask);
+        }
+    };
+
+    // The origin is the center of the element's box. Surfaces before tiltsItself existed pass
+    // no transform and tilt the container instead.
+    const writeTilt = (frame: SurfaceFrame, rs: CSSStyleDeclaration) => {
+        const transform = frame.tiltTransform || '';
+        const { paint } = frame;
+        const origin = ownBox ? '' : `${frame.width / 2 - paint.left}px ${frame.height / 2 - paint.top}px`;
+        const key = transform && `${transform}|${origin}`;
+        if (key === lastTilt) return;
+        lastTilt = key;
+        if (transform) rs.setProperty('--acrylic-tilt', transform);
+        else rs.removeProperty('--acrylic-tilt');
+        if (transform && origin) rs.setProperty('--acrylic-tilt-origin', origin);
+        else rs.removeProperty('--acrylic-tilt-origin');
+    };
 
     return {
         static: true,
+        tiltsItself: true,
         attach(container) {
             const backdrop = canBlur();
             root = document.createElement('div');
@@ -132,41 +188,14 @@ export function createAcrylicLayer(): SurfaceLayer {
             if (root && root.parentNode) root.parentNode.removeChild(root);
             root = null;
             elements = [];
-            lastShape = '';
+            lastShape = lastTilt = '';
+            ownBox = true;
         },
         write(frame: SurfaceFrame) {
-            if (!root || (!frame.changed.style && !frame.changed.size)) return false;
-            const { paint } = frame;
-            const radii = roundedRectRadii(frame.shape.outline, frame.width, frame.height);
-            const d = radii ? '' : toSvgPath(shifted(frame.shape.outline, -paint.left, -paint.top));
-            const key = radii ? `radius ${radii.join(' ')} ${paint.left} ${paint.top} ${paint.width} ${paint.height}` : `${paint.width} ${paint.height} ${d}`;
-            if (key === lastShape) return false;
-            lastShape = key;
-            let mask = '';
-            // The layer box is the paint box, which other layers (a shadow) may make larger than
-            // the element. A rounded rectangle covers the element's own box; a mask covers the
-            // paint box and holds the outline in its coordinates.
-            const box = radii && (paint.left || paint.top || paint.width !== frame.width || paint.height !== frame.height);
-            const rs = root.style;
-            if (radii) {
-                rs.setProperty('--acrylic-shape-radius', radii.map((r) => `${r}px`).join(' '));
-            } else {
-                rs.removeProperty('--acrylic-shape-radius');
-                mask = maskImage(d, paint.width, paint.height);
-            }
-            if (box) {
-                rs.setProperty('--acrylic-box-left', `${-paint.left}px`);
-                rs.setProperty('--acrylic-box-top', `${-paint.top}px`);
-                rs.setProperty('--acrylic-box-width', `${frame.width}px`);
-                rs.setProperty('--acrylic-box-height', `${frame.height}px`);
-            } else {
-                for (const name of ['left', 'top', 'width', 'height']) rs.removeProperty(`--acrylic-box-${name}`);
-            }
-            for (const e of elements) {
-                const s = e.style;
-                s.setProperty('-webkit-mask-image', mask);
-                s.setProperty('mask-image', mask);
-            }
+            if (!root) return false;
+            const { changed } = frame;
+            if (changed.style || changed.size) writeShape(frame, root.style);
+            if (changed.tilt || changed.style || changed.size) writeTilt(frame, root.style);
             return false;
         },
     };
