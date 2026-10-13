@@ -137,6 +137,12 @@ The texture is also a layer of `ax-surface`. Here's a tilting surface with acryl
 * 0.1.1: Shapes other than rounded rectangles are cut with a mask. In Chrome, the blur used to cover the whole box when the acrylic sat inside a rounded container with `overflow: hidden`.
 * 0.1.2: Together with a layer that paints outside the shape (like a shadow), the acrylic of a rounded rectangle used to cover the whole painted area instead of the element.
 
+## Changes in 0.2
+
+* Needs Surface 0.2. The acrylic tilts its own elements, so it shows the right backdrop in Firefox inside `position: sticky` while the surface is pressed.
+* In Firefox, shapes other than rounded rectangles are cut with `clip-path`: the glass used to vanish for a moment while the shape changed quickly. The other browsers keep the mask.
+* The glass covers the bounds of the shape, whatever the shape. The blur at the edges and the noise used to jump when a corner moved off a rounded rectangle.
+
 ## Development
 
 ```bash
