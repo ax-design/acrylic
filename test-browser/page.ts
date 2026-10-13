@@ -35,7 +35,13 @@ async function run() {
         const noise = root.querySelector('.acrylic-noise') as HTMLElement | null;
         const clip = filter ? filter.style.getPropertyValue('clip-path') || filter.style.getPropertyValue('-webkit-clip-path') : '';
         check(`${id}: layer elements exist`, !!filter && !!tint && !!noise);
-        check(`${id}: the blur element is clipped to the shape`, /^(path\(|url\()/.test(clip), clip.slice(0, 40));
+        if (id === 'a') {
+            // Round corners only: border-radius, no clip path.
+            const radius = getComputedStyle(filter!).borderTopLeftRadius;
+            check(`${id}: round corners use border-radius`, clip === '' && radius === '24px', `${clip} ${radius}`);
+        } else {
+            check(`${id}: the blur element is clipped to the shape`, /^(path\(|url\()/.test(clip), clip.slice(0, 40));
+        }
         if (fallback) {
             check(`${id}: fallback tint without backdrop-filter`, !!tint && tint.classList.contains('fallback') && getComputedStyle(filter!).display === 'none');
         } else {

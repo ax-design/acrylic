@@ -6,7 +6,7 @@ import type { Contour, Segment } from '@ax-design/shape';
 import { toSvgPath } from '@ax-design/shape';
 
 const STYLE = `
-.acrylic-filter, .acrylic-tint, .acrylic-noise { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; }
+.acrylic-filter, .acrylic-tint, .acrylic-noise { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; border-radius: var(--acrylic-shape-radius, 0); }
 .acrylic-noise { opacity: var(--acrylic-noise-opacity, 0.03); }
 .acrylic-tint { background-color: var(--acrylic-tint-color, black); opacity: var(--acrylic-tint-opacity, 0.6); }
 .acrylic-tint.fallback { background-color: var(--acrylic-fallback-color, black); opacity: 1; }
@@ -69,6 +69,34 @@ function shifted(contour: Contour, dx: number, dy: number): Contour {
     };
 }
 
+// The corner radii [top-left, top-right, bottom-right, bottom-left] when the outline is a
+// rectangle of the box with circular corners, else null. Such shapes are drawn with
+// border-radius, which the browser clips for the backdrop without the cost of a clip path.
+export function roundedRectRadii(contour: Contour, width: number, height: number): [number, number, number, number] | null {
+    const e = 0.01;
+    const near = (a: number, b: number) => Math.abs(a - b) < e;
+    const radii: [number, number, number, number] = [0, 0, 0, 0];
+    for (const s of contour.segments) {
+        if (s.type === 'line') {
+            const vertical = near(s.x0, s.x1) && (near(s.x0, 0) || near(s.x0, width));
+            const horizontal = near(s.y0, s.y1) && (near(s.y0, 0) || near(s.y0, height));
+            if (!vertical && !horizontal) return null;
+            continue;
+        }
+        // A clockwise quarter turn, bulging out of a box corner: the middle of the arc points
+        // at the corner, and the center sits r away from both of its sides.
+        const sweep = (((s.end - s.start) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+        if (s.anticlockwise || !near(sweep, Math.PI / 2)) return null;
+        const mid = s.start + sweep / 2;
+        const right = Math.cos(mid) > 0;
+        const bottom = Math.sin(mid) > 0;
+        const corner = bottom ? (right ? 2 : 3) : right ? 1 : 0;
+        if (!near(s.cx, right ? width - s.r : s.r) || !near(s.cy, bottom ? height - s.r : s.r)) return null;
+        radii[corner] = s.r;
+    }
+    return radii;
+}
+
 let instance = 0;
 
 export function createAcrylicLayer(): SurfaceLayer {
@@ -121,14 +149,20 @@ export function createAcrylicLayer(): SurfaceLayer {
         },
         write(frame: SurfaceFrame) {
             if (!root || (!frame.changed.style && !frame.changed.size)) return false;
-            const d = toSvgPath(shifted(frame.shape.outline, -frame.paint.left, -frame.paint.top));
+            const radii = roundedRectRadii(frame.shape.outline, frame.width, frame.height);
+            const d = radii ? `radius ${radii.join(' ')}` : toSvgPath(shifted(frame.shape.outline, -frame.paint.left, -frame.paint.top));
             if (d === lastClip) return false;
             lastClip = d;
             let value: string;
-            if (clipPath) {
+            if (radii) {
+                root.style.setProperty('--acrylic-shape-radius', radii.map((r) => `${r}px`).join(' '));
+                value = '';
+            } else if (clipPath) {
+                root.style.removeProperty('--acrylic-shape-radius');
                 clipPath.setAttribute('d', d);
                 value = `url(#${id})`;
             } else {
+                root.style.removeProperty('--acrylic-shape-radius');
                 value = `path('${d}')`;
             }
             for (const e of elements) {
