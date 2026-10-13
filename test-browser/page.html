@@ -3,13 +3,15 @@
 <style>
   html, body { margin: 0; padding: 0; }
   .pattern { position: absolute; left: 0; top: 0; width: 600px; height: 400px; background: repeating-conic-gradient(#e33 0 25%, #fff 0 50%) 0 0 / 8px 8px; }
-  ax-acrylic, ax-surface { position: absolute; width: 200px; height: 100px; --acrylic-tint-opacity: 0; --acrylic-noise-opacity: 0; --acrylic-blur: 12px; --acrylic-saturate: 100%; --acrylic-brightness: 100%; }
+  ax-acrylic, ax-surface { position: absolute; width: 200px; height: 100px; --acrylic-tint-opacity: 0; --acrylic-noise-opacity: 0; --acrylic-blur: 12px; --acrylic-saturate: 100%; --acrylic-brightness: 50%; }
   #a { left: 40px; top: 40px; --ax-radius: 24px; }
-  #s { left: 300px; top: 40px; --ax-radius: 24px; --ax-corner-shape: bevel; }
+  /* A rounded card that clips its overflow: Chromium then ignores clip-path for backdrop-filter. */
+  .card { position: absolute; left: 280px; top: 20px; width: 260px; height: 160px; overflow: hidden; border-radius: 16px; }
+  #s { left: 20px; top: 20px; --ax-radius: 24px; --ax-corner-shape: bevel; }
 </style></head>
 <body>
 <div class="pattern"></div>
 <ax-acrylic id="a"></ax-acrylic>
-<ax-surface id="s" layers="acrylic"></ax-surface>
+<div class="card"><ax-surface id="s" layers="acrylic"></ax-surface></div>
 <script type="module" src="./page.ts"></script>
 </body></html>

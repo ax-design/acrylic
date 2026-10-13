@@ -134,6 +134,7 @@ The texture is also a layer of `ax-surface`. Here's a tilting surface with acryl
 * Acrylic runs on Surface and can be shaped with the `--ax-*` properties.
 * Safari uses the blur now, it used to fall back to the plain color because only `-webkit-backdrop-filter` is available there.
 * It works in Firefox, and in browsers without `CSS.registerProperty` or `createImageBitmap`.
+* 0.1.1: Shapes other than rounded rectangles are cut with a mask. In Chrome, the blur used to cover the whole box when the acrylic sat inside a rounded container with `overflow: hidden`.
 
 ## Development
 

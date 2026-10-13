@@ -1,12 +1,18 @@
-// The acrylic texture as a surface layer: a backdrop blur, a tint and a noise layer, each
-// clipped to the surface shape. The clip goes on each element itself: a clip on an ancestor
-// makes that ancestor a backdrop root, and the blur then sees nothing behind it.
+// The acrylic texture as a surface layer: a backdrop blur, a tint and a noise layer, each cut to
+// the surface shape. The cut goes on each element itself: a clip on an ancestor makes that
+// ancestor a backdrop root, and the blur then sees nothing behind it.
+// Rounded rectangles use border-radius. Other shapes use a mask of the outline, not clip-path:
+// Chromium ignores an element's clip-path for its backdrop-filter when an ancestor clips its
+// overflow with a border-radius (a rounded card), and filters the whole box.
 import type { SurfaceFrame, SurfaceLayer } from '@ax-design/surface';
 import type { Contour, Segment } from '@ax-design/shape';
 import { toSvgPath } from '@ax-design/shape';
 
 const STYLE = `
-.acrylic-filter, .acrylic-tint, .acrylic-noise { position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; border-radius: var(--acrylic-shape-radius, 0); }
+.acrylic-filter, .acrylic-tint, .acrylic-noise {
+  position: absolute; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; border-radius: var(--acrylic-shape-radius, 0);
+  -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
 .acrylic-noise { opacity: var(--acrylic-noise-opacity, 0.03); }
 .acrylic-tint { background-color: var(--acrylic-tint-color, black); opacity: var(--acrylic-tint-opacity, 0.6); }
 .acrylic-tint.fallback { background-color: var(--acrylic-fallback-color, black); opacity: 1; }
@@ -17,23 +23,22 @@ const STYLE = `
 .acrylic-fallback .acrylic-filter, .acrylic-fallback .acrylic-noise { display: none; }
 `;
 
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
 function supports(property: string, value: string): boolean {
     return typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports(property, value);
 }
 
 // Checked once: Safari before 18 only has the prefixed backdrop-filter.
-let capabilities: { backdrop: boolean; path: boolean } | null = null;
-function capable() {
-    if (!capabilities) {
-        capabilities = {
-            backdrop: supports('backdrop-filter', 'blur(1px)') || supports('-webkit-backdrop-filter', 'blur(1px)'),
-            // path() avoids url(#id), which old Safari fails to resolve on pages with a <base>.
-            path: supports('clip-path', 'path("M0 0")') || supports('-webkit-clip-path', 'path("M0 0")'),
-        };
-    }
-    return capabilities;
+let backdropSupport: boolean | null = null;
+function canBlur(): boolean {
+    if (backdropSupport === null) backdropSupport = supports('backdrop-filter', 'blur(1px)') || supports('-webkit-backdrop-filter', 'blur(1px)');
+    return backdropSupport;
+}
+
+// The outline as an SVG image for mask-image. A data URL references no id, so it works with a
+// <base> element on the page (old Safari resolves url(#id) against it).
+function maskImage(d: string, width: number, height: number): string {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><path d="${d}"/></svg>`;
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
 // 256 x 256 random gray noise, made once per page on first use.
@@ -71,7 +76,7 @@ function shifted(contour: Contour, dx: number, dy: number): Contour {
 
 // The corner radii [top-left, top-right, bottom-right, bottom-left] when the outline is a
 // rectangle of the box with circular corners, else null. Such shapes are drawn with
-// border-radius, which the browser clips for the backdrop without the cost of a clip path.
+// border-radius, which the browser cuts for the backdrop without the cost of a mask.
 export function roundedRectRadii(contour: Contour, width: number, height: number): [number, number, number, number] | null {
     const e = 0.01;
     const near = (a: number, b: number) => Math.abs(a - b) < e;
@@ -97,19 +102,15 @@ export function roundedRectRadii(contour: Contour, width: number, height: number
     return radii;
 }
 
-let instance = 0;
-
 export function createAcrylicLayer(): SurfaceLayer {
-    const id = `ax-acrylic-clip-${instance++}`;
     let elements: HTMLElement[] = [];
     let root: HTMLElement | null = null;
-    let clipPath: SVGPathElement | null = null;
-    let lastClip = '';
+    let lastShape = '';
 
     return {
         static: true,
         attach(container) {
-            const { backdrop, path } = capable();
+            const backdrop = canBlur();
             root = document.createElement('div');
             root.style.display = 'contents';
             if (!backdrop) root.className = 'acrylic-fallback';
@@ -124,50 +125,33 @@ export function createAcrylicLayer(): SurfaceLayer {
             });
             if (!backdrop) elements[1].classList.add('fallback');
             else elements[2].style.backgroundImage = `url(${noiseTexture()})`;
-            if (!path) {
-                const svg = document.createElementNS(SVG_NS, 'svg');
-                svg.setAttribute('width', '0');
-                svg.setAttribute('height', '0');
-                svg.setAttribute('aria-hidden', 'true');
-                svg.style.position = 'absolute';
-                const clip = document.createElementNS(SVG_NS, 'clipPath');
-                clip.setAttribute('id', id);
-                clip.setAttribute('clipPathUnits', 'userSpaceOnUse');
-                clipPath = document.createElementNS(SVG_NS, 'path');
-                clip.appendChild(clipPath);
-                svg.appendChild(clip);
-                root.appendChild(svg);
-            }
             container.appendChild(root);
         },
         detach() {
             if (root && root.parentNode) root.parentNode.removeChild(root);
             root = null;
             elements = [];
-            clipPath = null;
-            lastClip = '';
+            lastShape = '';
         },
         write(frame: SurfaceFrame) {
             if (!root || (!frame.changed.style && !frame.changed.size)) return false;
+            const { paint } = frame;
             const radii = roundedRectRadii(frame.shape.outline, frame.width, frame.height);
-            const d = radii ? `radius ${radii.join(' ')}` : toSvgPath(shifted(frame.shape.outline, -frame.paint.left, -frame.paint.top));
-            if (d === lastClip) return false;
-            lastClip = d;
-            let value: string;
+            const d = radii ? '' : toSvgPath(shifted(frame.shape.outline, -paint.left, -paint.top));
+            const key = radii ? `radius ${radii.join(' ')}` : `${paint.width} ${paint.height} ${d}`;
+            if (key === lastShape) return false;
+            lastShape = key;
+            let mask = '';
             if (radii) {
                 root.style.setProperty('--acrylic-shape-radius', radii.map((r) => `${r}px`).join(' '));
-                value = '';
-            } else if (clipPath) {
-                root.style.removeProperty('--acrylic-shape-radius');
-                clipPath.setAttribute('d', d);
-                value = `url(#${id})`;
             } else {
                 root.style.removeProperty('--acrylic-shape-radius');
-                value = `path('${d}')`;
+                mask = maskImage(d, paint.width, paint.height);
             }
             for (const e of elements) {
-                e.style.setProperty('-webkit-clip-path', value);
-                e.style.setProperty('clip-path', value);
+                const s = e.style;
+                s.setProperty('-webkit-mask-image', mask);
+                s.setProperty('mask-image', mask);
             }
             return false;
         },

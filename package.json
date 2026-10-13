@@ -1,6 +1,6 @@
 {
     "name": "@ax-design/acrylic",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Web component that implements Acrylic texture of Axiom Design System.",
     "main": "build/main.js",
     "module": "es/index.js",

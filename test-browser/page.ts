@@ -33,14 +33,14 @@ async function run() {
         const filter = root.querySelector('.acrylic-filter') as HTMLElement | null;
         const tint = root.querySelector('.acrylic-tint') as HTMLElement | null;
         const noise = root.querySelector('.acrylic-noise') as HTMLElement | null;
-        const clip = filter ? filter.style.getPropertyValue('clip-path') || filter.style.getPropertyValue('-webkit-clip-path') : '';
+        const clip = filter ? filter.style.getPropertyValue('mask-image') || filter.style.getPropertyValue('-webkit-mask-image') : '';
         check(`${id}: layer elements exist`, !!filter && !!tint && !!noise);
         if (id === 'a') {
-            // Round corners only: border-radius, no clip path.
+            // Round corners only: border-radius, no mask.
             const radius = getComputedStyle(filter!).borderTopLeftRadius;
             check(`${id}: round corners use border-radius`, clip === '' && radius === '24px', `${clip} ${radius}`);
         } else {
-            check(`${id}: the blur element is clipped to the shape`, /^(path\(|url\()/.test(clip), clip.slice(0, 40));
+            check(`${id}: the blur element is masked to the shape`, /^url\("?data:image\/svg\+xml/.test(clip), clip.slice(0, 40));
         }
         if (fallback) {
             check(`${id}: fallback tint without backdrop-filter`, !!tint && tint.classList.contains('fallback') && getComputedStyle(filter!).display === 'none');
