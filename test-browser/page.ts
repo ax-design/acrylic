@@ -1,5 +1,7 @@
 // Browser checks for the acrylic layer. ?fallback=1 pretends backdrop-filter is unsupported.
+import { apply, tiltHomography } from '@ax-design/shape';
 import { registerLayer } from '@ax-design/surface';
+import type { AxSurface } from '@ax-design/surface';
 import { register } from '../src/index.js';
 
 interface Check {
@@ -64,7 +66,11 @@ async function run() {
             const radius = getComputedStyle(filter!).borderTopLeftRadius;
             check(`${id}: round corners use border-radius`, clip === '' && radius === '24px', `${clip} ${radius}`);
         } else {
-            check(`${id}: the blur element is masked to the shape`, /^url\("?data:image\/svg\+xml/.test(clip), clip.slice(0, 40));
+            // Gecko cuts with clip-path, the other engines with a mask (see layer.ts).
+            const gecko = CSS.supports('-moz-appearance', 'none') && CSS.supports('clip-path', 'path("M0 0H1V1Z")');
+            const clipPath = filter!.style.getPropertyValue('clip-path');
+            if (gecko) check(`${id}: the blur element is clipped to the shape`, /^path\(/.test(clipPath) && clip === '', `${clipPath.slice(0, 40)} | ${clip.slice(0, 20)}`);
+            else check(`${id}: the blur element is masked to the shape`, /^url\("?data:image\/svg\+xml/.test(clip) && clipPath === '', clip.slice(0, 40));
         }
         if (fallback) {
             check(`${id}: fallback tint without backdrop-filter`, !!tint && tint.classList.contains('fallback') && getComputedStyle(filter!).display === 'none');
@@ -72,16 +78,47 @@ async function run() {
             check(`${id}: noise texture set`, !!noise && /^url\("?data:image\/png/.test(noise.style.backgroundImage), noise ? noise.style.backgroundImage.slice(0, 30) : '');
         }
     }
-    // With a halo the paint box is larger than the element; the frosted glass must still
-    // cover the element only.
+    // With a halo the paint box is larger than the shape; the frosted glass covers the shape's
+    // bounds only, however the shape is cut. The tint is shown in both modes (the blur element
+    // is hidden in the fallback).
+    const tintOf = (el: Element) => el.shadowRoot!.querySelector('.acrylic-tint') as HTMLElement;
+    // The shape's bounds on screen, through the tilt when there is one.
+    const boundsOnScreen = (el: AxSurface) => {
+        const host = el.getBoundingClientRect();
+        const state = el.debugState;
+        const b = state.shape!.bounds;
+        const H = state.tilt ? tiltHomography(state.tilt) : null;
+        const corners = [
+            { x: b.left, y: b.top },
+            { x: b.right, y: b.top },
+            { x: b.right, y: b.bottom },
+            { x: b.left, y: b.bottom },
+        ].map((q) => (H ? apply(H, q) : q));
+        const xs = corners.map((q) => q.x + host.left);
+        const ys = corners.map((q) => q.y + host.top);
+        return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
+    };
+    const offBy = (a: { left: number; top: number; right: number; bottom: number }, b: DOMRect) =>
+        Math.max(Math.abs(a.left - b.left), Math.abs(a.top - b.top), Math.abs(a.right - b.right), Math.abs(a.bottom - b.bottom));
+    for (const id of ['sh', 'm']) {
+        const el = document.getElementById(id) as AxSurface;
+        const err = offBy(boundsOnScreen(el), tintOf(el).getBoundingClientRect());
+        check(`${id}: acrylic covers the shape's bounds, not the halo area`, err < 0.5, `err=${err.toFixed(3)}`);
+    }
+    // Shifting a corner off a rounded rectangle changes how the shape is cut, not where the
+    // elements are (the bounds move by a fraction of a pixel): the blur at the edges and the
+    // noise used to jump between the two, when other shapes covered the whole paint box.
     {
-        const sh = document.getElementById('sh')!;
-        // The tint is shown in both modes (the blur element is hidden in the fallback).
-        const tint = sh.shadowRoot!.querySelector('.acrylic-tint') as HTMLElement;
-        const a = sh.getBoundingClientRect();
-        const b = tint.getBoundingClientRect();
-        const same = Math.abs(a.left - b.left) < 0.5 && Math.abs(a.top - b.top) < 0.5 && Math.abs(a.width - b.width) < 0.5 && Math.abs(a.height - b.height) < 0.5;
-        check('sh: acrylic covers the element, not the halo area', same, `${JSON.stringify(a.toJSON())} vs ${JSON.stringify(b.toJSON())}`);
+        const sh = document.getElementById('sh') as AxSurface;
+        const before = tintOf(sh).getBoundingClientRect();
+        const radiusBefore = getComputedStyle(tintOf(sh)).borderTopLeftRadius;
+        sh.style.setProperty('--ax-corner-top-left-shift-x', '0.5%');
+        await frames(6);
+        const after = tintOf(sh).getBoundingClientRect();
+        const cut = tintOf(sh).style.getPropertyValue('clip-path') || tintOf(sh).style.getPropertyValue('mask-image') || tintOf(sh).style.getPropertyValue('-webkit-mask-image');
+        check('sh: a small corner shift switches the cut, not the box', radiusBefore === '16px' && cut !== '' && offBy({ left: before.left, top: before.top, right: before.right, bottom: before.bottom }, after) < 0.5, `${radiusBefore} ${cut.slice(0, 20)} ${JSON.stringify(after.toJSON())}`);
+        sh.style.removeProperty('--ax-corner-top-left-shift-x');
+        await frames(6);
     }
     // Pressed and tilted: the acrylic elements tilt themselves, no ancestor in the shadow root
     // has a transform (Firefox renders the backdrop wrong under one inside position: sticky),
@@ -110,13 +147,9 @@ async function run() {
             parent = parent.parentNode;
         }
         check(`${id}: no transformed ancestor`, flatAbove);
-        // A rounded rectangle covers the element like the content; a mask covers the paint
-        // box like the halo element.
-        const ref = (id === 'sh' ? root.querySelector('.content') : root.querySelector('.layer-halo .halo')) as HTMLElement;
-        const a = ref.getBoundingClientRect();
-        const b = tint.getBoundingClientRect();
-        const err = Math.max(Math.abs(a.left - b.left), Math.abs(a.top - b.top), Math.abs(a.right - b.right), Math.abs(a.bottom - b.bottom));
-        check(`${id}: tilted acrylic lines up with the other layers`, err < 0.5, `err=${err.toFixed(3)}`);
+        // The bounds of m reach below the element (a triangle), so a wrong origin shows.
+        const err = offBy(boundsOnScreen(el as AxSurface), tint.getBoundingClientRect());
+        check(`${id}: tilted acrylic turns around the element center`, err < 0.5, `err=${err.toFixed(3)}`);
         window.dispatchEvent(new PointerEvent('pointerup', { ...init, buttons: 0 }));
         await frames(8);
         check(`${id}: released acrylic returns flat`, getComputedStyle(tint).transform === 'none', getComputedStyle(tint).transform);
