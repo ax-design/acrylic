@@ -33,7 +33,17 @@
     ],
     "dependencies": {
         "@ax-design/shape": "^0.1.0",
-        "@ax-design/surface": "^0.1.0",
+        "@ax-design/surface": "^0.1.1",
         "@ax-design/typed-om": "^0.1.0"
+    },
+    "exports": {
+        ".": {
+            "types": "./es/index.d.ts",
+            "source": "./src/index.ts",
+            "import": "./es/index.js",
+            "require": "./build/main.js",
+            "default": "./es/index.js"
+        },
+        "./package.json": "./package.json"
     }
 }
