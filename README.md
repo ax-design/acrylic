@@ -1,5 +1,8 @@
 <h1 align="center">
-  <img src="https://raw.githubusercontent.com/ax-design/acrylic/master/docs/logo.png" alt="acrylic">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ax-design/acrylic/master/docs/logo-r.png">
+    <img src="https://raw.githubusercontent.com/ax-design/acrylic/master/docs/logo.png" alt="Ax Acrylic" height="48">
+  </picture>
 </h1>
 
 <p align="center">
