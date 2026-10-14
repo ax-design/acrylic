@@ -13,7 +13,8 @@
 // Firefox turns the blur clear as soon as the surface is pressed, without it.
 import type { SurfaceFrame, SurfaceLayer } from '@ax-design/surface';
 import type { Contour, Segment } from '@ax-design/shape';
-import { toSvgPath } from '@ax-design/shape';
+import { IDENTITY, apply, toSvgPath } from '@ax-design/shape';
+import type { Homography, Point } from '@ax-design/shape';
 
 const STYLE = `
 :host { isolation: isolate; }
@@ -127,6 +128,80 @@ export function createAcrylicLayer(): SurfaceLayer {
     // Where the elements sit, relative to the surface element: at the shape's bounds.
     let boundsLeft = 0;
     let boundsTop = 0;
+    // Gecko: the cut of the last frame, and the margin the box keeps around the shape.
+    let lastProjected = '';
+    let projectMargin = 8;
+
+    // The outline as points, its arcs in steps of about 2 px.
+    const outlinePoints = (contour: Contour): Point[] => {
+        const points: Point[] = [];
+        for (const seg of contour.segments) {
+            if (seg.type === 'line') {
+                points.push({ x: seg.x0, y: seg.y0 });
+                continue;
+            }
+            let sweep = seg.end - seg.start;
+            if (seg.anticlockwise && sweep > 0) sweep -= 2 * Math.PI;
+            if (!seg.anticlockwise && sweep < 0) sweep += 2 * Math.PI;
+            const steps = Math.min(64, Math.max(2, Math.ceil((Math.abs(sweep) * seg.r) / 2)));
+            for (let i = 0; i < steps; i++) {
+                const angle = seg.start + (sweep * i) / steps;
+                points.push({ x: seg.cx + seg.r * Math.cos(angle), y: seg.cy + seg.r * Math.sin(angle) });
+            }
+        }
+        return points;
+    };
+
+    // Gecko: flat elements over the bounds and a margin, cut to the outline seen through the
+    // tilt (the outline itself when flat). A 3D transform of the elements turns the backdrop
+    // clear there, so the elements never transform: the blur is of the page behind, which does
+    // not tilt either, and only the cut follows the tilt, exact, in the clip-path it uses
+    // anyway.
+    const writeProjected = (frame: SurfaceFrame, rs: CSSStyleDeclaration, shape: SurfaceFrame['shape']) => {
+        const h = (frame.tilt as Homography | null) || IDENTITY;
+        const points = outlinePoints(shape.outline).map((p) => apply(h, p));
+        const b = shape.bounds;
+        let left = b.left;
+        let top = b.top;
+        let right = b.right;
+        let bottom = b.bottom;
+        for (const p of points) {
+            left = Math.min(left, p.x);
+            top = Math.min(top, p.y);
+            right = Math.max(right, p.x);
+            bottom = Math.max(bottom, p.y);
+        }
+        // The box is the bounds and a margin, the same through a tilt: a backdrop-filter whose
+        // box changes while it tilts can turn clear too. It only grows when the tilt needs more.
+        const need = Math.ceil(Math.max(b.left - left, b.top - top, right - b.right, bottom - b.bottom, 0));
+        if (need > projectMargin) projectMargin = need + 8;
+        // To 1 px: the bounds of a shape in a transition wiggle by fractions of a pixel a frame,
+        // and a box rewritten every frame turns the backdrop clear like a rewritten cut. A drag
+        // moves by pixels a frame, so it still follows. The cut is relative to the box, so the
+        // pixel the box can be off by moves the cut with it, unseen.
+        const snap = (n: number) => Math.round(n);
+        left = snap(b.left - projectMargin);
+        top = snap(b.top - projectMargin);
+        right = snap(b.right + projectMargin);
+        bottom = snap(b.bottom + projectMargin);
+        const round = (n: number) => Math.round(n * 100) / 100;
+        const { paint } = frame;
+        const d = `M${points.map((p) => `${round(p.x - left)} ${round(p.y - top)}`).join(' L')} Z`;
+        const key = `${left} ${top} ${right} ${bottom} ${paint.left} ${paint.top} ${d}`;
+        if (key === lastProjected) return;
+        lastProjected = key;
+        rs.removeProperty('--acrylic-shape-radius');
+        rs.setProperty('--acrylic-box-left', `${left - paint.left}px`);
+        rs.setProperty('--acrylic-box-top', `${top - paint.top}px`);
+        rs.setProperty('--acrylic-box-width', `${right - left}px`);
+        rs.setProperty('--acrylic-box-height', `${bottom - top}px`);
+        for (const e of elements) {
+            const s = e.style;
+            s.setProperty('-webkit-mask-image', '');
+            s.setProperty('mask-image', '');
+            s.setProperty('clip-path', `path("${d}")`);
+        }
+    };
 
     // Every shape, however it is cut, covers its own bounds, so a change of the cut (a corner
     // shifted away from a rounded rectangle) leaves the elements in place. The blur near the
@@ -216,12 +291,20 @@ export function createAcrylicLayer(): SurfaceLayer {
             elements = [];
             lastShape = lastTilt = '';
             boundsLeft = boundsTop = 0;
+            lastProjected = '';
+            projectMargin = 8;
         },
         write(frame: SurfaceFrame) {
             if (!root) return false;
             const { changed } = frame;
+            // Gecko cuts the glass the same way flat and tilted: one box, one clip-path, no
+            // transform of the elements anywhere.
+            if (useClipPath()) {
+                if (changed.style || changed.size || changed.tilt || frame.tilt) writeProjected(frame, root.style, frame.shape);
+                return false;
+            }
             if (changed.style || changed.size) writeShape(frame, root.style);
-            if (changed.tilt || changed.style || changed.size) writeTilt(frame, root.style);
+            if (!useClipPath() && (changed.tilt || changed.style || changed.size)) writeTilt(frame, root.style);
             return false;
         },
     };
