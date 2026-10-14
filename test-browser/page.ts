@@ -54,6 +54,11 @@ async function run() {
     });
     register();
     await frames(8);
+    // Gecko cuts with clip-path, the other engines with a mask or border-radius (see layer.ts).
+    // There the glass never transforms: its box is the shape's bounds and a margin, and the cut
+    // is the outline seen through the tilt.
+    const gecko = CSS.supports('-moz-appearance', 'none') && CSS.supports('clip-path', 'path("M0 0H1V1Z")');
+    const GECKO_MARGIN = 8;
     for (const id of ['a', 's']) {
         const root = document.getElementById(id)!.shadowRoot!;
         const filter = root.querySelector('.acrylic-filter') as HTMLElement | null;
@@ -61,13 +66,13 @@ async function run() {
         const noise = root.querySelector('.acrylic-noise') as HTMLElement | null;
         const clip = filter ? filter.style.getPropertyValue('mask-image') || filter.style.getPropertyValue('-webkit-mask-image') : '';
         check(`${id}: layer elements exist`, !!filter && !!tint && !!noise);
-        if (id === 'a') {
+        if (id === 'a' && gecko) {
+            check(`${id}: round corners are cut by the outline`, /^path\(/.test(filter!.style.getPropertyValue('clip-path')) && clip === '', filter!.style.getPropertyValue('clip-path').slice(0, 40));
+        } else if (id === 'a') {
             // Round corners only: border-radius, no mask.
             const radius = getComputedStyle(filter!).borderTopLeftRadius;
             check(`${id}: round corners use border-radius`, clip === '' && radius === '24px', `${clip} ${radius}`);
         } else {
-            // Gecko cuts with clip-path, the other engines with a mask (see layer.ts).
-            const gecko = CSS.supports('-moz-appearance', 'none') && CSS.supports('clip-path', 'path("M0 0H1V1Z")');
             const clipPath = filter!.style.getPropertyValue('clip-path');
             if (gecko) check(`${id}: the blur element is clipped to the shape`, /^path\(/.test(clipPath) && clip === '', `${clipPath.slice(0, 40)} | ${clip.slice(0, 20)}`);
             else check(`${id}: the blur element is masked to the shape`, /^url\("?data:image\/svg\+xml/.test(clip) && clipPath === '', clip.slice(0, 40));
@@ -98,12 +103,44 @@ async function run() {
         const ys = corners.map((q) => q.y + host.top);
         return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
     };
+    // The outline's extent on screen, through the tilt, its arcs sampled finely.
+    const outlineOnScreen = (el: AxSurface) => {
+        const host = el.getBoundingClientRect();
+        const state = el.debugState;
+        const H = state.tilt ? tiltHomography(state.tilt) : null;
+        const out = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+        const add = (q: { x: number; y: number }) => {
+            const p = H ? apply(H, q) : q;
+            out.left = Math.min(out.left, p.x + host.left);
+            out.right = Math.max(out.right, p.x + host.left);
+            out.top = Math.min(out.top, p.y + host.top);
+            out.bottom = Math.max(out.bottom, p.y + host.top);
+        };
+        for (const seg of state.shape!.outline.segments) {
+            if (seg.type === 'line') {
+                add({ x: seg.x0, y: seg.y0 });
+                continue;
+            }
+            let sweep = seg.end - seg.start;
+            if (seg.anticlockwise && sweep > 0) sweep -= 2 * Math.PI;
+            if (!seg.anticlockwise && sweep < 0) sweep += 2 * Math.PI;
+            for (let i = 0; i <= 256; i++) {
+                const t = seg.start + (sweep * i) / 256;
+                add({ x: seg.cx + seg.r * Math.cos(t), y: seg.cy + seg.r * Math.sin(t) });
+            }
+        }
+        return out;
+    };
     const offBy = (a: { left: number; top: number; right: number; bottom: number }, b: DOMRect) =>
         Math.max(Math.abs(a.left - b.left), Math.abs(a.top - b.top), Math.abs(a.right - b.right), Math.abs(a.bottom - b.bottom));
+    // Gecko: the bounds and the margin, each edge snapped to the pixel.
+    const grown = (a: { left: number; top: number; right: number; bottom: number }) =>
+        gecko ? { left: a.left - GECKO_MARGIN, top: a.top - GECKO_MARGIN, right: a.right + GECKO_MARGIN, bottom: a.bottom + GECKO_MARGIN } : a;
+    const tolerance = gecko ? 1 : 0.5;
     for (const id of ['sh', 'm']) {
         const el = document.getElementById(id) as AxSurface;
-        const err = offBy(boundsOnScreen(el), tintOf(el).getBoundingClientRect());
-        check(`${id}: acrylic covers the shape's bounds, not the halo area`, err < 0.5, `err=${err.toFixed(3)}`);
+        const err = offBy(grown(boundsOnScreen(el)), tintOf(el).getBoundingClientRect());
+        check(`${id}: acrylic covers the shape's bounds, not the halo area`, err < tolerance, `err=${err.toFixed(3)}`);
     }
     // Shifting a corner off a rounded rectangle changes how the shape is cut, not where the
     // elements are (the bounds move by a fraction of a pixel): the blur at the edges and the
@@ -116,7 +153,7 @@ async function run() {
         await frames(6);
         const after = tintOf(sh).getBoundingClientRect();
         const cut = tintOf(sh).style.getPropertyValue('clip-path') || tintOf(sh).style.getPropertyValue('mask-image') || tintOf(sh).style.getPropertyValue('-webkit-mask-image');
-        check('sh: a small corner shift switches the cut, not the box', radiusBefore === '16px' && cut !== '' && offBy({ left: before.left, top: before.top, right: before.right, bottom: before.bottom }, after) < 0.5, `${radiusBefore} ${cut.slice(0, 20)} ${JSON.stringify(after.toJSON())}`);
+        check('sh: a small corner shift switches the cut, not the box', radiusBefore === (gecko ? '0px' : '16px') && cut !== '' && offBy({ left: before.left, top: before.top, right: before.right, bottom: before.bottom }, after) < 0.5, `${radiusBefore} ${cut.slice(0, 20)} ${JSON.stringify(after.toJSON())}`);
         sh.style.removeProperty('--ax-corner-top-left-shift-x');
         await frames(6);
     }
@@ -129,6 +166,7 @@ async function run() {
         el.style.setProperty('--ax-tilt-depth', '30px');
         el.style.setProperty('--ax-tilt-perspective', '300px');
         await frames(4);
+        const flatCut = (el.shadowRoot!.querySelector('.acrylic-tint') as HTMLElement).style.getPropertyValue('clip-path');
         const r = el.getBoundingClientRect();
         const x = r.left + r.width - 6;
         const y = r.top + 6;
@@ -139,7 +177,8 @@ async function run() {
         const root = el.shadowRoot!;
         const tint = root.querySelector('.acrylic-tint') as HTMLElement;
         const transform = getComputedStyle(tint).transform;
-        check(`${id}: pressed acrylic tilts`, transform !== 'none', transform);
+        if (gecko) check(`${id}: pressed acrylic is cut through the tilt, not transformed`, transform === 'none' && tint.style.getPropertyValue('clip-path') !== flatCut, transform);
+        else check(`${id}: pressed acrylic tilts`, transform !== 'none', transform);
         let parent = tint.parentNode;
         let flatAbove = true;
         while (parent && parent !== root) {
@@ -148,11 +187,26 @@ async function run() {
         }
         check(`${id}: no transformed ancestor`, flatAbove);
         // The bounds of m reach below the element (a triangle), so a wrong origin shows.
-        const err = offBy(boundsOnScreen(el as AxSurface), tint.getBoundingClientRect());
-        check(`${id}: tilted acrylic turns around the element center`, err < 0.5, `err=${err.toFixed(3)}`);
+        if (gecko) {
+            // The points of the cut, on screen, against the outline through the tilt.
+            const box = tint.getBoundingClientRect();
+            const nums = (tint.style.getPropertyValue('clip-path').match(/-?[\d.]+(e-?\d+)?/g) || []).map(Number);
+            const cut = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+            for (let i = 0; i + 1 < nums.length; i += 2) {
+                cut.left = Math.min(cut.left, nums[i] + box.left);
+                cut.right = Math.max(cut.right, nums[i] + box.left);
+                cut.top = Math.min(cut.top, nums[i + 1] + box.top);
+                cut.bottom = Math.max(cut.bottom, nums[i + 1] + box.top);
+            }
+            const err = offBy(outlineOnScreen(el as AxSurface), cut as unknown as DOMRect);
+            check(`${id}: tilted acrylic turns around the element center`, err < 0.5, `err=${err.toFixed(3)}`);
+        } else {
+            const err = offBy(boundsOnScreen(el as AxSurface), tint.getBoundingClientRect());
+            check(`${id}: tilted acrylic turns around the element center`, err < 0.5, `err=${err.toFixed(3)}`);
+        }
         window.dispatchEvent(new PointerEvent('pointerup', { ...init, buttons: 0 }));
         await frames(8);
-        check(`${id}: released acrylic returns flat`, getComputedStyle(tint).transform === 'none', getComputedStyle(tint).transform);
+        check(`${id}: released acrylic returns flat`, getComputedStyle(tint).transform === 'none' && (!gecko || tint.style.getPropertyValue('clip-path') === flatCut), getComputedStyle(tint).transform);
     }
     // A surface with acrylic is a stacking context of its own (Firefox turns a pressed blur in a
     // transformed ancestor clear otherwise); a style of the page wins over it.
