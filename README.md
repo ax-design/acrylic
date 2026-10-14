@@ -147,7 +147,7 @@ A surface with acrylic is a stacking context of its own (`isolation: isolate`): 
 * Needs Surface 0.2. The acrylic tilts its own elements, which helps Firefox show the right backdrop while the surface is pressed.
 * In Firefox, shapes other than rounded rectangles are cut with `clip-path`: the glass used to vanish for a moment while the shape changed quickly. The other browsers keep the mask.
 * The glass covers the bounds of the shape, whatever the shape. The blur at the edges and the noise used to jump when a corner moved off a rounded rectangle.
-* 0.2.1: A surface with acrylic is a stacking context of its own. In Firefox, the glass of a surface inside an element with a `transform` used to turn clear as soon as it was pressed. In Firefox the glass is never transformed: it stays flat and is cut to the outline seen through the tilt, since any 3D transform in a surface turns its blur clear there. Use it with Surface 0.2.4, which tilts the rest of the surface with a 2D transform in Firefox.
+* 0.2.2: A surface with acrylic is a stacking context of its own. In Firefox, the glass of a surface inside an element with a `transform` used to turn clear as soon as it was pressed. In Firefox the glass is never transformed: it stays flat and is cut to the outline seen through the tilt, since any 3D transform in a surface turns its blur clear there. Use it with Surface 0.2.4, which tilts the rest of the surface with a 2D transform in Firefox.
 
 ## Development
 
