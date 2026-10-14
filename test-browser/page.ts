@@ -154,6 +154,19 @@ async function run() {
         await frames(8);
         check(`${id}: released acrylic returns flat`, getComputedStyle(tint).transform === 'none', getComputedStyle(tint).transform);
     }
+    // A surface with acrylic is a stacking context of its own (Firefox turns a pressed blur in a
+    // transformed ancestor clear otherwise); a style of the page wins over it.
+    const iso = document.getElementById('s')!;
+    check('acrylic isolates its surface', getComputedStyle(iso).isolation === 'isolate', getComputedStyle(iso).isolation);
+    iso.style.isolation = 'auto';
+    check('the page can undo the isolation', getComputedStyle(iso).isolation === 'auto', getComputedStyle(iso).isolation);
+    iso.style.removeProperty('isolation');
+    const plainSurface = document.createElement('ax-surface');
+    plainSurface.setAttribute('layers', 'halo');
+    document.body.appendChild(plainSurface);
+    await frames(2);
+    check('a surface without acrylic is not isolated', getComputedStyle(plainSurface).isolation === 'auto', getComputedStyle(plainSurface).isolation);
+    plainSurface.remove();
     const rect = (id: string) => document.getElementById(id)!.getBoundingClientRect().toJSON();
     return { userAgent: navigator.userAgent, checks, rects: { a: rect('a'), s: rect('s') }, dpr: devicePixelRatio, fallback };
 }

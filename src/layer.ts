@@ -8,11 +8,15 @@
 // draws stretches of frames with the whole element masked away, decoded images or not.
 // The tilt goes on the elements too: inside position: sticky, Firefox renders a backdrop-filter
 // under an animated 3D transform of an ancestor with the wrong backdrop.
+// The surface is a stacking context of its own (isolation: isolate, a :host rule, so any style
+// of the page wins): in an ancestor with a transform, such as a tile placed by a tile group,
+// Firefox turns the blur clear as soon as the surface is pressed, without it.
 import type { SurfaceFrame, SurfaceLayer } from '@ax-design/surface';
 import type { Contour, Segment } from '@ax-design/shape';
 import { toSvgPath } from '@ax-design/shape';
 
 const STYLE = `
+:host { isolation: isolate; }
 .acrylic-filter, .acrylic-tint, .acrylic-noise {
   position: absolute; pointer-events: none; border-radius: var(--acrylic-shape-radius, 0);
   left: var(--acrylic-box-left, 0); top: var(--acrylic-box-top, 0); width: var(--acrylic-box-width, 100%); height: var(--acrylic-box-height, 100%);

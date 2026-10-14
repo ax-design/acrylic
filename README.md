@@ -129,6 +129,8 @@ The texture is also a layer of `ax-surface`. Here's a tilting surface with acryl
 </ax-surface>
 ```
 
+A surface with acrylic is a stacking context of its own (`isolation: isolate`): the `z-index` of what is inside it counts only inside it. Firefox needs this to draw the glass of a pressed surface inside an element with a `transform`, such as a tile of a tile group. Set `isolation: auto` on the element to undo it.
+
 ## Changes in 0.1
 
 * Acrylic runs on Surface and can be shaped with the `--ax-*` properties.
@@ -142,6 +144,7 @@ The texture is also a layer of `ax-surface`. Here's a tilting surface with acryl
 * Needs Surface 0.2. The acrylic tilts its own elements, so it shows the right backdrop in Firefox inside `position: sticky` while the surface is pressed.
 * In Firefox, shapes other than rounded rectangles are cut with `clip-path`: the glass used to vanish for a moment while the shape changed quickly. The other browsers keep the mask.
 * The glass covers the bounds of the shape, whatever the shape. The blur at the edges and the noise used to jump when a corner moved off a rounded rectangle.
+* 0.2.1: A surface with acrylic is a stacking context of its own. In Firefox, the glass of a surface inside an element with a `transform` used to turn clear as soon as it was pressed.
 
 ## Development
 
