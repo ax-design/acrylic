@@ -1,7 +1,7 @@
 <h1 align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/ax-design/acrylic/master/docs/logo-r.png">
-    <img src="https://raw.githubusercontent.com/ax-design/acrylic/master/docs/logo.png" alt="Ax Acrylic" height="48">
+    <img src="https://raw.githubusercontent.com/ax-design/acrylic/master/docs/logo.png" alt="Ax Acrylic">
   </picture>
 </h1>
 
