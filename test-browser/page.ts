@@ -1,6 +1,6 @@
 // Browser checks for the acrylic layer. ?fallback=1 pretends backdrop-filter is unsupported.
 import { apply, tiltHomography } from '@ax-design/shape';
-import { registerLayer } from '@ax-design/surface';
+import { registerLayer, setAlwaysUseFallback } from '@ax-design/surface';
 import type { AxSurface } from '@ax-design/surface';
 import { register } from '../src/index.js';
 
@@ -221,7 +221,39 @@ async function run() {
     await frames(2);
     check('a surface without acrylic is not isolated', getComputedStyle(plainSurface).isolation === 'auto', getComputedStyle(plainSurface).isolation);
     plainSurface.remove();
-    const rect = (id: string) => document.getElementById(id)!.getBoundingClientRect().toJSON();
+    // The page asks for the fallback (WinUI's AlwaysUseFallback) and then stops asking: the
+    // acrylic follows, live. Last, and restored before the screenshot, so the pixel checks see
+    // the glass. Only here: the fallback page has no glass to go back to.
+    if (!fallback) {
+        const parts = (id: string) => {
+            const tint = document.getElementById(id)!.shadowRoot!.querySelector('.acrylic-tint') as HTMLElement;
+            const filter = document.getElementById(id)!.shadowRoot!.querySelector('.acrylic-filter') as HTMLElement;
+            const noise = document.getElementById(id)!.shadowRoot!.querySelector('.acrylic-noise') as HTMLElement;
+            return { layer: tint.parentElement!, tint, filter, noise };
+        };
+        setAlwaysUseFallback(true);
+        await frames(4);
+        for (const id of ['a', 's']) {
+            const { layer, tint, filter, noise } = parts(id);
+            const opacity = getComputedStyle(tint).opacity;
+            const display = getComputedStyle(filter).display;
+            check(`${id}: always use fallback sets the root class`, layer.classList.contains('acrylic-fallback'), layer.className);
+            check(`${id}: always use fallback makes the tint solid`, tint.classList.contains('fallback') && opacity === '1', `${tint.className} ${opacity}`);
+            check(`${id}: always use fallback hides the blur element`, display === 'none', display);
+            check(`${id}: always use fallback drops the noise`, noise.style.backgroundImage === '', noise.style.backgroundImage.slice(0, 30));
+        }
+        setAlwaysUseFallback(false);
+        await frames(4);
+        for (const id of ['a', 's']) {
+            const { layer, tint, filter, noise } = parts(id);
+            const display = getComputedStyle(filter).display;
+            check(`${id}: back to glass clears the root class`, !layer.classList.contains('acrylic-fallback'), layer.className);
+            check(`${id}: back to glass clears the tint class`, !tint.classList.contains('fallback'), tint.className);
+            check(`${id}: back to glass shows the blur element`, display !== 'none', display);
+            check(`${id}: back to glass restores the noise`, /^url\("?data:image\/png/.test(noise.style.backgroundImage), noise.style.backgroundImage.slice(0, 30));
+        }
+    }
+    const rect =(id: string) => document.getElementById(id)!.getBoundingClientRect().toJSON();
     return { userAgent: navigator.userAgent, checks, rects: { a: rect('a'), s: rect('s') }, dpr: devicePixelRatio, fallback };
 }
 

@@ -15,6 +15,7 @@ import type { SurfaceFrame, SurfaceLayer } from '@ax-design/surface';
 import type { Contour, Segment } from '@ax-design/shape';
 import { IDENTITY, apply, toSvgPath } from '@ax-design/shape';
 import type { Homography, Point } from '@ax-design/shape';
+import { useFallback } from '@ax-design/surface';
 
 const STYLE = `
 :host { isolation: isolate; }
@@ -138,6 +139,21 @@ export function createAcrylicLayer(): SurfaceLayer {
     // Gecko: the cut of the last frame, and the margin the box keeps around the shape.
     let lastProjected = '';
     let projectMargin = 8;
+    // The fallback as drawn: the solid tint, no blur, no noise. WinUI's AcrylicBrush draws its
+    // FallbackColor when transparency effects are off or AlwaysUseFallback is set, so it follows
+    // the user's preferences as they change. Null until attach or the first frame sets it.
+    let inFallback: boolean | null = null;
+    let appearanceSeen = false;
+
+    // Sets the fallback classes and the noise, only when the state changes. The noise is made
+    // on first use, so a page that never draws it never makes it.
+    const setFallback = (on: boolean) => {
+        if (!root || on === inFallback) return;
+        inFallback = on;
+        root.classList.toggle('acrylic-fallback', on);
+        elements[1].classList.toggle('fallback', on);
+        elements[2].style.backgroundImage = on ? '' : `url(${noiseTexture()})`;
+    };
 
     // The outline as points, its arcs in steps of about 2 px.
     const outlinePoints = (contour: Contour): Point[] => {
@@ -275,10 +291,8 @@ export function createAcrylicLayer(): SurfaceLayer {
         static: true,
         tiltsItself: true,
         attach(container) {
-            const backdrop = canBlur();
             root = document.createElement('div');
             root.style.display = 'contents';
-            if (!backdrop) root.className = 'acrylic-fallback';
             const style = document.createElement('style');
             style.textContent = STYLE;
             root.appendChild(style);
@@ -288,14 +302,17 @@ export function createAcrylicLayer(): SurfaceLayer {
                 root!.appendChild(e);
                 return e;
             });
-            if (!backdrop) elements[1].classList.add('fallback');
-            else elements[2].style.backgroundImage = `url(${noiseTexture()})`;
+            // Without backdrop-filter the first paint is the fallback; a frame may change it.
+            inFallback = null;
+            setFallback(!canBlur());
             container.appendChild(root);
         },
         detach() {
             if (root && root.parentNode) root.parentNode.removeChild(root);
             root = null;
             elements = [];
+            inFallback = null;
+            appearanceSeen = false;
             lastShape = lastTilt = '';
             boundsLeft = boundsTop = 0;
             lastProjected = '';
@@ -304,6 +321,12 @@ export function createAcrylicLayer(): SurfaceLayer {
         write(frame: SurfaceFrame) {
             if (!root) return false;
             const { changed } = frame;
+            // Missing on surfaces built before the appearance API: no fallback then.
+            if (changed.appearance || !appearanceSeen) {
+                appearanceSeen = true;
+                setFallback(!canBlur() || (!!frame.appearance && useFallback(frame.appearance)));
+            }
+            // The cut below also runs in fallback: the solid tint is the shape, so it stays cut.
             // Gecko cuts the glass the same way flat and tilted: one box, one clip-path, no
             // transform of the elements anywhere.
             if (useClipPath()) {
