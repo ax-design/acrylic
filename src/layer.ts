@@ -32,6 +32,13 @@ const STYLE = `
   backdrop-filter: blur(var(--acrylic-blur, 25px)) saturate(var(--acrylic-saturate, 200%)) brightness(var(--acrylic-brightness, 95%));
 }
 .acrylic-fallback .acrylic-filter, .acrylic-fallback .acrylic-noise { display: none; }
+/* Forced colors (Windows High Contrast) replace the acrylic brushes with an opaque
+   SystemColorWindowColor: no blur, no transparency, no noise. The fallback selector is listed
+   too, so this wins over .acrylic-tint.fallback. */
+@media (forced-colors: active) {
+  .acrylic-filter, .acrylic-noise { display: none; }
+  .acrylic-tint, .acrylic-tint.fallback { background-color: Canvas; opacity: 1; }
+}
 `;
 
 function supports(property: string, value: string): boolean {

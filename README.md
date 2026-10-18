@@ -80,7 +80,7 @@ Acrylic component uses custom properties to manage the style of the tile effect.
 
 **Default:** `black`
 
-**Description:** The color of the Acrylic texture if `dropback-filter` is not available for your user, PLEASE NOTICE THAT there isn't an option called `--acrylic-fallback-opacity`, the opacity of fallback Acrylic texture is always 1 for the concern of a11y.
+**Description:** The color of the Acrylic texture if `dropback-filter` is not available for your user, PLEASE NOTICE THAT there isn't an option called `--acrylic-fallback-opacity`, the opacity of fallback Acrylic texture is always 1 for the concern of a11y. In forced colors mode (Windows High Contrast), the texture is always an opaque `Canvas` with no blur or noise, as WinUI does with `SystemColorWindowColor`.
 
 ### --acrylic-noise-opacity
 

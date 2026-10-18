@@ -22,6 +22,8 @@ const server = Bun.serve({
 interface Driver {
     result(): Promise<any>;
     shot(): Promise<Buffer>;
+    // Playwright only: the page under forced colors (Windows High Contrast), checked live.
+    forcedColors?(): Promise<{ name: string; ok: boolean; detail: string }[]>;
     close(): Promise<void>;
 }
 
@@ -36,6 +38,27 @@ async function playwright(name: string, url: string): Promise<Driver> {
             return page.evaluate(() => (window as any).__result);
         },
         shot: () => page.screenshot(),
+        async forcedColors() {
+            await page.emulateMedia({ forcedColors: 'active' });
+            return page.evaluate(() => {
+                const out: { name: string; ok: boolean; detail: string }[] = [];
+                for (const id of ['a', 's']) {
+                    const root = document.getElementById(id)?.shadowRoot;
+                    const tint = root?.querySelector('.acrylic-tint') as HTMLElement | null;
+                    const filter = root?.querySelector('.acrylic-filter') as HTMLElement | null;
+                    const noise = root?.querySelector('.acrylic-noise') as HTMLElement | null;
+                    if (!tint || !filter || !noise) {
+                        out.push({ name: `${id} forced colors: layer elements exist`, ok: false, detail: 'missing' });
+                        continue;
+                    }
+                    const opacity = getComputedStyle(tint).opacity;
+                    out.push({ name: `${id} forced colors: tint is opaque`, ok: opacity === '1', detail: opacity });
+                    const filterDisplay = getComputedStyle(filter).display;
+                    out.push({ name: `${id} forced colors: blur element is hidden`, ok: filterDisplay === 'none', detail: filterDisplay });
+                }
+                return out;
+            });
+        },
         close: () => browser.close(),
     };
 }
@@ -101,6 +124,8 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['chro
             if (!result.error && !fallback && (name === 'chromium' || name === 'safari')) {
                 result.checks.push(...pixelChecks(PNG.sync.read(await d.shot()), result.dpr, result.rects));
             }
+            // After the screenshot: forced colors would change the pixels the blur check reads.
+            if (!result.error && d.forcedColors) result.checks.push(...(await d.forcedColors()));
         } finally {
             await d.close();
         }
