@@ -80,12 +80,13 @@ function maskImage(d: string, width: number, height: number): string {
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 }
 
-// 256 x 256 random gray noise, made once per page on first use.
+// 128 x 128 random gray noise, tiled, made once per page on first use. Small: making it (and
+// encoding it as PNG) runs when the first acrylic is made, which may be during an animation.
 let noise: string | null = null;
 function noiseTexture(): string {
     if (noise !== null) return noise;
     noise = '';
-    const size = 256;
+    const size = 128;
     const canvas = document.createElement('canvas');
     canvas.width = canvas.height = size;
     const ctx = canvas.getContext('2d');
