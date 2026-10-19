@@ -28,9 +28,13 @@ const STYLE = `
   -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
   transform: var(--acrylic-tilt, none); transform-origin: var(--acrylic-tilt-origin, 50% 50%);
 }
-.acrylic-noise { opacity: var(--acrylic-noise-opacity, 0.03); }
-.acrylic-tint { background-color: var(--acrylic-tint-color, black); opacity: var(--acrylic-tint-opacity, 0.6); }
-.acrylic-tint.fallback { background-color: var(--acrylic-fallback-color, black); opacity: 1; }
+/* The motion opacity (--acrylic-motion, see writeOpacity) multiplies into the opacity of each
+   element. The cross-fade drives the same opacity property, from 0 to the motion opacity and back,
+   so the two compose without a second property. */
+.acrylic-filter { opacity: var(--acrylic-motion, 1); }
+.acrylic-noise { opacity: calc(var(--acrylic-noise-opacity, 0.03) * var(--acrylic-motion, 1)); }
+.acrylic-tint { background-color: var(--acrylic-tint-color, black); opacity: calc(var(--acrylic-tint-opacity, 0.6) * var(--acrylic-motion, 1)); }
+.acrylic-tint.fallback { background-color: var(--acrylic-fallback-color, black); opacity: var(--acrylic-motion, 1); }
 .acrylic-filter {
   -webkit-backdrop-filter: blur(var(--acrylic-blur, 25px)) saturate(var(--acrylic-saturate, 200%)) brightness(var(--acrylic-brightness, 95%));
   backdrop-filter: blur(var(--acrylic-blur, 25px)) saturate(var(--acrylic-saturate, 200%)) brightness(var(--acrylic-brightness, 95%));
@@ -46,7 +50,7 @@ const STYLE = `
    too, so this wins over .acrylic-tint.fallback. Forced colors never fade. */
 @media (forced-colors: active) {
   .acrylic-filter, .acrylic-noise { display: none; }
-  .acrylic-tint, .acrylic-tint.fallback { background-color: Canvas; opacity: 1; }
+  .acrylic-tint, .acrylic-tint.fallback { background-color: Canvas; opacity: var(--acrylic-motion, 1); }
   .acrylic-fading .acrylic-tint, .acrylic-fading .acrylic-filter, .acrylic-fading .acrylic-noise { transition: none; }
 }
 `;
@@ -157,6 +161,8 @@ export function createAcrylicLayer(): SurfaceLayer {
     // (going) faded out. Its end is the transitionend of the blur, or the timer when none comes.
     let fading = false;
     let fadeTimer: number | null = null;
+    // The motion opacity last written to the root (see writeOpacity).
+    let lastOpacity = -1;
 
     const stopFadeTimer = () => {
         if (fadeTimer !== null) window.clearTimeout(fadeTimer);
@@ -219,6 +225,16 @@ export function createAcrylicLayer(): SurfaceLayer {
         }
         fading = true;
         fadeTimer = window.setTimeout(endFade, FADE_MS + 50);
+    };
+
+    // The motion opacity (AxSurface.motion), as --acrylic-motion on the root: the stylesheet
+    // multiplies it into each element's own opacity, never into an ancestor's.
+    const writeOpacity = (frame: SurfaceFrame, rs: CSSStyleDeclaration) => {
+        // Missing on surfaces built before motion(): fully opaque.
+        const opacity = frame.opacity === undefined ? 1 : frame.opacity;
+        if (opacity === lastOpacity) return;
+        lastOpacity = opacity;
+        rs.setProperty('--acrylic-motion', String(opacity));
     };
 
     // The outline as points, its arcs in steps of about 2 px.
@@ -371,6 +387,7 @@ export function createAcrylicLayer(): SurfaceLayer {
             root.addEventListener('transitionend', onTransitionEnd);
             // Without backdrop-filter the first paint is the fallback; a frame may change it.
             inFallback = null;
+            lastOpacity = -1;
             setFallback(!canBlur(), false);
             container.appendChild(root);
         },
@@ -382,6 +399,7 @@ export function createAcrylicLayer(): SurfaceLayer {
             elements = [];
             inFallback = null;
             appearanceSeen = false;
+            lastOpacity = -1;
             lastShape = lastTilt = '';
             boundsLeft = boundsTop = 0;
             lastProjected = '';
@@ -398,6 +416,7 @@ export function createAcrylicLayer(): SurfaceLayer {
                 appearanceSeen = true;
                 setFallback(!canBlur() || (!!frame.appearance && useFallback(frame.appearance)), animate);
             }
+            writeOpacity(frame, root.style);
             // The cut below also runs in fallback: the solid tint is the shape, so it stays cut.
             // Gecko cuts the glass the same way flat and tilted: one box, one clip-path, no
             // transform of the elements anywhere.
