@@ -134,6 +134,10 @@ The texture is also a layer of `ax-surface`. Here's a tilting surface with acryl
 
 A surface with acrylic is a stacking context of its own (`isolation: isolate`): the `z-index` of what is inside it counts only inside it. Firefox needs this to draw the glass of a pressed surface inside an element with a `transform`, such as a tile of a tile group. Set `isolation: auto` on the element to undo it.
 
+## Motion
+
+Acrylic follows `motion()` of `ax-surface`: a 3D motion turns the glass with the surface, and the motion's `opacity` is applied to the acrylic elements themselves (the blur, the tint and the noise, the tint keeping its own opacity times it), never to an ancestor, so the backdrop stays right. In Firefox, where no 3D transform may sit above acrylic, it keeps working because nothing is transformed above it: the glass stays flat and is cut to the projected outline while the surface moves.
+
 ## Changes in 0.1
 
 * Acrylic runs on Surface and can be shaped with the `--ax-*` properties.
