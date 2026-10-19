@@ -1,5 +1,5 @@
 // Browser checks for the acrylic layer. ?fallback=1 pretends backdrop-filter is unsupported.
-import { apply, tiltHomography } from '@ax-design/shape';
+import { apply } from '@ax-design/shape';
 import { registerLayer, setAlwaysUseFallback } from '@ax-design/surface';
 import type { AxSurface } from '@ax-design/surface';
 import { register } from '../src/index.js';
@@ -145,7 +145,7 @@ async function run() {
         const host = el.getBoundingClientRect();
         const state = el.debugState;
         const b = state.shape!.bounds;
-        const H = state.tilt ? tiltHomography(state.tilt) : null;
+        const H = state.homography;
         const corners = [
             { x: b.left, y: b.top },
             { x: b.right, y: b.top },
@@ -160,7 +160,7 @@ async function run() {
     const outlineOnScreen = (el: AxSurface) => {
         const host = el.getBoundingClientRect();
         const state = el.debugState;
-        const H = state.tilt ? tiltHomography(state.tilt) : null;
+        const H = state.homography;
         const out = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
         const add = (q: { x: number; y: number }) => {
             const p = H ? apply(H, q) : q;
@@ -181,6 +181,19 @@ async function run() {
                 const t = seg.start + (sweep * i) / 256;
                 add({ x: seg.cx + seg.r * Math.cos(t), y: seg.cy + seg.r * Math.sin(t) });
             }
+        }
+        return out;
+    };
+    // Gecko: the box of the glass cut, from the points of its clip-path (relative to the element).
+    const cutOnScreen = (tint: HTMLElement) => {
+        const box = tint.getBoundingClientRect();
+        const nums = (tint.style.getPropertyValue('clip-path').match(/-?[\d.]+(e-?\d+)?/g) || []).map(Number);
+        const out = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+        for (let i = 0; i + 1 < nums.length; i += 2) {
+            out.left = Math.min(out.left, nums[i] + box.left);
+            out.right = Math.max(out.right, nums[i] + box.left);
+            out.top = Math.min(out.top, nums[i + 1] + box.top);
+            out.bottom = Math.max(out.bottom, nums[i + 1] + box.top);
         }
         return out;
     };
@@ -242,16 +255,7 @@ async function run() {
         // The bounds of m reach below the element (a triangle), so a wrong origin shows.
         if (gecko) {
             // The points of the cut, on screen, against the outline through the tilt.
-            const box = tint.getBoundingClientRect();
-            const nums = (tint.style.getPropertyValue('clip-path').match(/-?[\d.]+(e-?\d+)?/g) || []).map(Number);
-            const cut = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
-            for (let i = 0; i + 1 < nums.length; i += 2) {
-                cut.left = Math.min(cut.left, nums[i] + box.left);
-                cut.right = Math.max(cut.right, nums[i] + box.left);
-                cut.top = Math.min(cut.top, nums[i + 1] + box.top);
-                cut.bottom = Math.max(cut.bottom, nums[i + 1] + box.top);
-            }
-            const err = offBy(outlineOnScreen(el as AxSurface), cut as unknown as DOMRect);
+            const err = offBy(outlineOnScreen(el as AxSurface), cutOnScreen(tint) as unknown as DOMRect);
             check(`${id}: tilted acrylic turns around the element center`, err < 0.5, `err=${err.toFixed(3)}`);
         } else {
             const err = offBy(boundsOnScreen(el as AxSurface), tint.getBoundingClientRect());
@@ -260,6 +264,108 @@ async function run() {
         window.dispatchEvent(new PointerEvent('pointerup', { ...init, buttons: 0 }));
         await frames(8);
         check(`${id}: released acrylic returns flat`, getComputedStyle(tint).transform === 'none' && (!gecko || tint.style.getPropertyValue('clip-path') === flatCut), getComputedStyle(tint).transform);
+    }
+    // Motion (AxSurface.motion): the opacity lands on the acrylic elements, never on an ancestor,
+    // and the glass follows the 3D motion. Chromium moves the elements with the transform; Firefox
+    // cuts the glass to the projected outline, and no box above it is transformed in 3D.
+    {
+        const el = document.getElementById('a') as AxSurface;
+        const { tint, filter, noise } = layerParts('a');
+        const opacityOf = (e: Element) => Number(getComputedStyle(e).opacity);
+        const near = (a: number, b: number) => Math.abs(a - b) < 0.01;
+        // The element and every box above it, through the shadow roots.
+        const above = (e: Node): Element[] => {
+            const out: Element[] = [];
+            for (let n: Node | null = e; n; n = n.parentNode instanceof ShadowRoot ? n.parentNode.host : n.parentNode) {
+                if (n instanceof Element) out.push(n);
+            }
+            return out;
+        };
+        // Visible values of the tint and the noise, so the multiplication is checked on real numbers.
+        el.style.setProperty('--acrylic-tint-opacity', '0.5');
+        el.style.setProperty('--acrylic-noise-opacity', '0.5');
+        el.motion({ opacity: 0.4 });
+        await frames(4);
+        check('a: motion opacity: the glass is faded', near(opacityOf(filter), 0.4), String(opacityOf(filter)));
+        // The tint's own opacity: 0.5 on glass, 1 as the solid fallback.
+        const base = tint.classList.contains('fallback') ? 1 : 0.5;
+        check('a: motion opacity: the tint is its opacity times the motion', near(opacityOf(tint), base * 0.4), String(opacityOf(tint)));
+        check('a: motion opacity: the noise is faded too', near(opacityOf(noise), 0.2), String(opacityOf(noise)));
+        const faded = above(tint).slice(1).filter((e) => getComputedStyle(e).opacity !== '1');
+        check('a: motion opacity: the host and every ancestor stay opaque', faded.length === 0, faded.map((e) => `${e.tagName.toLowerCase()}.${e.className}`).join(' '));
+        el.motion(null);
+        await frames(4);
+        check('a: motion(null) restores the glass', near(opacityOf(filter), 1), String(opacityOf(filter)));
+        check('a: motion(null) restores the tint', near(opacityOf(tint), base), String(opacityOf(tint)));
+
+        // The cross-fade and the motion compose: the glass fades out to 0 and back to the motion
+        // opacity, the solid tint settles at the motion opacity. Chromium and Firefox alike.
+        if (!fallback) {
+            el.motion({ opacity: 0.4 });
+            await frames(2);
+            setAlwaysUseFallback(true);
+            await sleep(80);
+            const mid = opacityOf(filter);
+            check('a: motion opacity in the fade to fallback: the glass is between 0 and 0.4', mid > 0 && mid < 0.4, String(mid));
+            await sleep(220);
+            check('a: motion opacity in fallback: the solid tint keeps the motion opacity', near(opacityOf(tint), 0.4), String(opacityOf(tint)));
+            setAlwaysUseFallback(false);
+            await sleep(80);
+            const back = opacityOf(filter);
+            check('a: motion opacity in the fade to glass: the glass is between 0 and 0.4', back > 0 && back < 0.4, String(back));
+            await sleep(220);
+            check('a: motion opacity back on glass: the glass ends at the motion opacity', near(opacityOf(filter), 0.4), String(opacityOf(filter)));
+            check('a: motion opacity back on glass: the tint is its opacity times the motion', near(opacityOf(tint), 0.2), String(opacityOf(tint)));
+            el.motion(null);
+            await frames(4);
+        }
+
+        // The 3D motion, around the center and from an origin outside the element. Chromium: the
+        // transform of the acrylic elements; Firefox: the cut follows the projected outline.
+        const cases: { name: string; state: { rotateY: number; originX?: number; originY?: number } }[] = [
+            { name: 'rotateY 50', state: { rotateY: 50 } },
+            { name: 'rotateY 30', state: { rotateY: 30 } },
+            { name: 'rotateY 30 from outside', state: { rotateY: 30, originX: -150, originY: 50 } },
+            { name: 'rotateY 60 from outside', state: { rotateY: 60, originX: -150, originY: 50 } },
+        ];
+        const cutLeft: Record<string, number> = {};
+        for (const c of cases) {
+            el.motion(c.state);
+            await frames(4);
+            const transform = getComputedStyle(tint).transform;
+            if (gecko) {
+                const boxes: Element[] = [el, ...Array.from(el.shadowRoot!.querySelectorAll('*'))];
+                const flat = boxes.filter((b) => /^matrix3d\(/.test(getComputedStyle(b).transform));
+                check(`a: motion ${c.name}: no box above the glass is transformed in 3D`, flat.length === 0, flat.map((b) => b.className || b.tagName).join(' '));
+                const cut = cutOnScreen(tint);
+                cutLeft[c.name] = cut.left;
+                const err = offBy(outlineOnScreen(el), cut as unknown as DOMRect);
+                check(`a: motion ${c.name}: the glass is cut to the projected outline`, err < 0.5 && !!tint.style.getPropertyValue('clip-path'), `err=${err.toFixed(3)}`);
+                // The element's box holds the whole cut: the box around the projected points.
+                const box = tint.getBoundingClientRect();
+                const outside = Math.max(box.left - cut.left, box.top - cut.top, cut.right - box.right, cut.bottom - box.bottom);
+                check(`a: motion ${c.name}: the box of the glass holds the projected cut`, outside < 0.5, `outside=${outside.toFixed(3)}`);
+            } else {
+                const tiltVar = tint.parentElement!.style.getPropertyValue('--acrylic-tilt');
+                check(`a: motion ${c.name}: the acrylic elements carry the 3D transform`, /^matrix3d\(/.test(transform) && tiltVar.includes(`rotateY(${c.state.rotateY}deg)`), `${transform.slice(0, 30)} ${tiltVar.slice(0, 60)}`);
+                const err = offBy(boundsOnScreen(el), tint.getBoundingClientRect());
+                check(`a: motion ${c.name}: the acrylic lands on the projected bounds`, err < 1, `err=${err.toFixed(3)}`);
+            }
+        }
+        if (gecko) {
+            // An origin on the left side turns the surface around its left edge, so the glass moves left.
+            check('a: the glass shifts left for an origin outside on the left', cutLeft['rotateY 30 from outside'] < cutLeft['rotateY 30'] - 5, `${cutLeft['rotateY 30 from outside']} vs ${cutLeft['rotateY 30']}`);
+        }
+        el.motion(null);
+        await frames(4);
+        if (gecko) {
+            const err = offBy(outlineOnScreen(el), cutOnScreen(tint) as unknown as DOMRect);
+            check('a: motion(null) returns the glass to the flat outline', err < 0.5, `err=${err.toFixed(3)}`);
+        } else {
+            check('a: motion(null) returns the acrylic flat', getComputedStyle(tint).transform === 'none', getComputedStyle(tint).transform);
+        }
+        el.style.removeProperty('--acrylic-tint-opacity');
+        el.style.removeProperty('--acrylic-noise-opacity');
     }
     // A surface with acrylic is a stacking context of its own (Firefox turns a pressed blur in a
     // transformed ancestor clear otherwise); a style of the page wins over it.
