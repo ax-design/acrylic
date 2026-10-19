@@ -22,6 +22,59 @@ const frames = (n: number) =>
         const step = () => (n-- <= 0 ? resolve() : requestAnimationFrame(step));
         requestAnimationFrame(step);
     });
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+// Strictly between 0 and 1: a value a fade passes through.
+const partly = (opacity: string) => Number(opacity) > 0 && Number(opacity) < 1;
+const layerParts = (id: string) => {
+    const root = document.getElementById(id)!.shadowRoot!;
+    const tint = root.querySelector('.acrylic-tint') as HTMLElement;
+    const filter = root.querySelector('.acrylic-filter') as HTMLElement;
+    const noise = root.querySelector('.acrylic-noise') as HTMLElement;
+    return { layer: tint.parentElement!, tint, filter, noise };
+};
+
+// Playwright turns reduced motion on, then calls this (window.__instantSwitch): the switch lands
+// on the next frames, with no state in between.
+async function instantSwitch(): Promise<{ name: string; ok: boolean; detail: string }[]> {
+    const out: { name: string; ok: boolean; detail: string }[] = [];
+    const snapshot = () =>
+        ['a', 's'].map((id) => {
+            const { layer, tint, filter } = layerParts(id);
+            return {
+                id,
+                fallbackRoot: layer.classList.contains('acrylic-fallback'),
+                solid: tint.classList.contains('fallback'),
+                tintOpacity: getComputedStyle(tint).opacity,
+                blur: getComputedStyle(filter).display,
+                blurOpacity: getComputedStyle(filter).opacity,
+            };
+        });
+    const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+    // The emulated preference reaches the page's media query on a frame of its own.
+    await frames(2);
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    out.push({ name: 'reduced motion: the page sees it', ok: reduced, detail: String(reduced) });
+    setAlwaysUseFallback(true);
+    await frames(1);
+    const toFallback = snapshot();
+    await frames(3);
+    for (const s of toFallback) {
+        const ok = s.fallbackRoot && s.solid && s.tintOpacity === '1' && s.blur === 'none';
+        out.push({ name: `${s.id}: reduced motion: fallback at once`, ok, detail: JSON.stringify(s) });
+    }
+    out.push({ name: 'reduced motion: no state between glass and fallback', ok: same(toFallback, snapshot()), detail: JSON.stringify(snapshot()) });
+    setAlwaysUseFallback(false);
+    await frames(1);
+    const toGlass = snapshot();
+    await frames(3);
+    for (const s of toGlass) {
+        const ok = !s.fallbackRoot && !s.solid && s.blur !== 'none' && s.blurOpacity === '1';
+        out.push({ name: `${s.id}: reduced motion: glass at once`, ok, detail: JSON.stringify(s) });
+    }
+    out.push({ name: 'reduced motion: no state between fallback and glass', ok: same(toGlass, snapshot()), detail: JSON.stringify(snapshot()) });
+    return out;
+}
+(window as any).__instantSwitch = instantSwitch;
 
 async function run() {
     const fallback = new URLSearchParams(location.search).get('fallback') === '1';
@@ -225,16 +278,19 @@ async function run() {
     // acrylic follows, live. Last, and restored before the screenshot, so the pixel checks see
     // the glass. Only here: the fallback page has no glass to go back to.
     if (!fallback) {
-        const parts = (id: string) => {
-            const tint = document.getElementById(id)!.shadowRoot!.querySelector('.acrylic-tint') as HTMLElement;
-            const filter = document.getElementById(id)!.shadowRoot!.querySelector('.acrylic-filter') as HTMLElement;
-            const noise = document.getElementById(id)!.shadowRoot!.querySelector('.acrylic-noise') as HTMLElement;
-            return { layer: tint.parentElement!, tint, filter, noise };
-        };
         setAlwaysUseFallback(true);
-        await frames(4);
+        // Mid-fade (about 80 ms in): the glass and the solid tint are both partly visible.
+        await sleep(80);
         for (const id of ['a', 's']) {
-            const { layer, tint, filter, noise } = parts(id);
+            const { filter, tint } = layerParts(id);
+            const glass = getComputedStyle(filter).opacity;
+            const solid = getComputedStyle(tint).opacity;
+            check(`${id}: fade to fallback: the glass is partly visible`, partly(glass), glass);
+            check(`${id}: fade to fallback: the solid tint is partly visible`, partly(solid), solid);
+        }
+        await sleep(220);
+        for (const id of ['a', 's']) {
+            const { layer, tint, filter, noise } = layerParts(id);
             const opacity = getComputedStyle(tint).opacity;
             const display = getComputedStyle(filter).display;
             check(`${id}: always use fallback sets the root class`, layer.classList.contains('acrylic-fallback'), layer.className);
@@ -243,9 +299,17 @@ async function run() {
             check(`${id}: always use fallback drops the noise`, noise.style.backgroundImage === '', noise.style.backgroundImage.slice(0, 30));
         }
         setAlwaysUseFallback(false);
-        await frames(4);
+        await sleep(80);
         for (const id of ['a', 's']) {
-            const { layer, tint, filter, noise } = parts(id);
+            const { filter, tint } = layerParts(id);
+            const glass = getComputedStyle(filter).opacity;
+            const solid = getComputedStyle(tint).opacity;
+            check(`${id}: fade back to glass: the glass is partly visible`, partly(glass), glass);
+            check(`${id}: fade back to glass: the solid tint is partly visible`, partly(solid), solid);
+        }
+        await sleep(220);
+        for (const id of ['a', 's']) {
+            const { layer, tint, filter, noise } = layerParts(id);
             const display = getComputedStyle(filter).display;
             check(`${id}: back to glass clears the root class`, !layer.classList.contains('acrylic-fallback'), layer.className);
             check(`${id}: back to glass clears the tint class`, !tint.classList.contains('fallback'), tint.className);

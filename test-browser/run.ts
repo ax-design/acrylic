@@ -24,6 +24,8 @@ interface Driver {
     shot(): Promise<Buffer>;
     // Playwright only: the page under forced colors (Windows High Contrast), checked live.
     forcedColors?(): Promise<{ name: string; ok: boolean; detail: string }[]>;
+    // Playwright only: reduced motion on, then the fallback switch must land at once.
+    reducedMotion?(): Promise<{ name: string; ok: boolean; detail: string }[]>;
     close(): Promise<void>;
 }
 
@@ -40,6 +42,10 @@ async function playwright(name: string, url: string): Promise<Driver> {
             return page.evaluate(() => (window as any).__result);
         },
         shot: () => page.screenshot(),
+        async reducedMotion() {
+            await page.emulateMedia({ reducedMotion: 'reduce' });
+            return page.evaluate(() => (window as any).__instantSwitch());
+        },
         async forcedColors() {
             await page.emulateMedia({ forcedColors: 'active' });
             return page.evaluate(() => {
@@ -126,6 +132,8 @@ for (const name of process.argv.slice(2).length ? process.argv.slice(2) : ['chro
             if (!result.error && !fallback && (name === 'chromium' || name === 'safari')) {
                 result.checks.push(...pixelChecks(PNG.sync.read(await d.shot()), result.dpr, result.rects));
             }
+            // Reduced motion before forced colors: the switch of the fallback is checked at once.
+            if (!result.error && !fallback && d.reducedMotion) result.checks.push(...(await d.reducedMotion()));
             // After the screenshot: forced colors would change the pixels the blur check reads.
             if (!result.error && d.forcedColors) result.checks.push(...(await d.forcedColors()));
         } finally {

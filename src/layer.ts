@@ -17,6 +17,9 @@ import { IDENTITY, apply, toSvgPath } from '@ax-design/shape';
 import type { Homography, Point } from '@ax-design/shape';
 import { useFallback } from '@ax-design/surface';
 
+// WinUI's AcrylicBrush cross-fades between its glass and its fallback in 167 ms.
+const FADE_MS = 167;
+
 const STYLE = `
 :host { isolation: isolate; }
 .acrylic-filter, .acrylic-tint, .acrylic-noise {
@@ -33,12 +36,18 @@ const STYLE = `
   backdrop-filter: blur(var(--acrylic-blur, 25px)) saturate(var(--acrylic-saturate, 200%)) brightness(var(--acrylic-brightness, 95%));
 }
 .acrylic-fallback .acrylic-filter, .acrylic-fallback .acrylic-noise { display: none; }
+/* The cross-fade into or out of the fallback, only while it runs: the tint transitions its color
+   and opacity, the glass fades out with acrylic-out (or back in, once drawn at opacity 0). */
+.acrylic-fading .acrylic-tint { transition: background-color ${FADE_MS}ms linear, opacity ${FADE_MS}ms linear; }
+.acrylic-fading .acrylic-filter, .acrylic-fading .acrylic-noise { transition: opacity ${FADE_MS}ms linear; }
+.acrylic-fading.acrylic-out .acrylic-filter, .acrylic-fading.acrylic-out .acrylic-noise { opacity: 0; }
 /* Forced colors (Windows High Contrast) replace the acrylic brushes with an opaque
    SystemColorWindowColor: no blur, no transparency, no noise. The fallback selector is listed
-   too, so this wins over .acrylic-tint.fallback. */
+   too, so this wins over .acrylic-tint.fallback. Forced colors never fade. */
 @media (forced-colors: active) {
   .acrylic-filter, .acrylic-noise { display: none; }
   .acrylic-tint, .acrylic-tint.fallback { background-color: Canvas; opacity: 1; }
+  .acrylic-fading .acrylic-tint, .acrylic-fading .acrylic-filter, .acrylic-fading .acrylic-noise { transition: none; }
 }
 `;
 
@@ -144,15 +153,72 @@ export function createAcrylicLayer(): SurfaceLayer {
     // the user's preferences as they change. Null until attach or the first frame sets it.
     let inFallback: boolean | null = null;
     let appearanceSeen = false;
+    // The cross-fade: `fading` while the root has acrylic-fading, `acrylic-out` while the glass is
+    // (going) faded out. Its end is the transitionend of the blur, or the timer when none comes.
+    let fading = false;
+    let fadeTimer: number | null = null;
 
-    // Sets the fallback classes and the noise, only when the state changes. The noise is made
-    // on first use, so a page that never draws it never makes it.
-    const setFallback = (on: boolean) => {
+    const stopFadeTimer = () => {
+        if (fadeTimer !== null) window.clearTimeout(fadeTimer);
+        fadeTimer = null;
+    };
+
+    // The classes of the state the fade settles in. The blur and the noise are hidden (display:
+    // none, the fallback class) only now, when they no longer show.
+    const endFade = () => {
+        stopFadeTimer();
+        if (!root || !fading) return;
+        fading = false;
+        root.classList.remove('acrylic-fading', 'acrylic-out');
+        root.classList.toggle('acrylic-fallback', inFallback === true);
+        if (inFallback) elements[2].style.backgroundImage = '';
+    };
+
+    const onTransitionEnd = (e: Event) => {
+        if (fading && e.target === elements[0] && (e as TransitionEvent).propertyName === 'opacity') endFade();
+    };
+
+    // Sets the fallback, only when the state changes. Without `animate` (the first state of the
+    // layer, reduced motion, or no appearance on the frame) it switches at once. Otherwise the
+    // glass fades out to the solid tint, or the other way, over FADE_MS. The noise is made on
+    // first use, so a page that never draws it never makes it.
+    const setFallback = (on: boolean, animate: boolean) => {
         if (!root || on === inFallback) return;
         inFallback = on;
-        root.classList.toggle('acrylic-fallback', on);
-        elements[1].classList.toggle('fallback', on);
-        elements[2].style.backgroundImage = on ? '' : `url(${noiseTexture()})`;
+        const tint = elements[1];
+        const noiseEl = elements[2];
+        stopFadeTimer();
+        if (!animate) {
+            fading = false;
+            root.classList.remove('acrylic-fading', 'acrylic-out');
+            root.classList.toggle('acrylic-fallback', on);
+            tint.classList.toggle('fallback', on);
+            noiseEl.style.backgroundImage = on ? '' : `url(${noiseTexture()})`;
+            return;
+        }
+        if (on) {
+            // The glass fades out; a fade already running goes on from where it is.
+            root.classList.add('acrylic-fading', 'acrylic-out');
+            tint.classList.add('fallback');
+        } else {
+            if (!fading) {
+                // Out of the settled fallback: the blur is shown again at opacity 0, which needs
+                // a style flush before the change to 1 starts the fade. Nothing is added to or
+                // removed from the elements' boxes: only the display and the opacity change.
+                root.classList.remove('acrylic-fallback');
+                root.classList.add('acrylic-fading', 'acrylic-out');
+                noiseEl.style.backgroundImage = `url(${noiseTexture()})`;
+                tint.classList.remove('fallback');
+                void elements[0].offsetWidth;
+            } else {
+                // A fade out of the glass was running: it turns back from where it is.
+                noiseEl.style.backgroundImage = `url(${noiseTexture()})`;
+                tint.classList.remove('fallback');
+            }
+            root.classList.remove('acrylic-out');
+        }
+        fading = true;
+        fadeTimer = window.setTimeout(endFade, FADE_MS + 50);
     };
 
     // The outline as points, its arcs in steps of about 2 px.
@@ -302,12 +368,15 @@ export function createAcrylicLayer(): SurfaceLayer {
                 root!.appendChild(e);
                 return e;
             });
+            root.addEventListener('transitionend', onTransitionEnd);
             // Without backdrop-filter the first paint is the fallback; a frame may change it.
             inFallback = null;
-            setFallback(!canBlur());
+            setFallback(!canBlur(), false);
             container.appendChild(root);
         },
         detach() {
+            stopFadeTimer();
+            fading = false;
             if (root && root.parentNode) root.parentNode.removeChild(root);
             root = null;
             elements = [];
@@ -321,10 +390,13 @@ export function createAcrylicLayer(): SurfaceLayer {
         write(frame: SurfaceFrame) {
             if (!root) return false;
             const { changed } = frame;
-            // Missing on surfaces built before the appearance API: no fallback then.
+            // Missing on surfaces built before the appearance API: no fallback then. The first
+            // state is drawn at once; a change of the preferences after it cross-fades, unless
+            // reduced motion is on or the appearance is missing.
             if (changed.appearance || !appearanceSeen) {
+                const animate = appearanceSeen && !!frame.appearance && !frame.appearance.reducedMotion;
                 appearanceSeen = true;
-                setFallback(!canBlur() || (!!frame.appearance && useFallback(frame.appearance)));
+                setFallback(!canBlur() || (!!frame.appearance && useFallback(frame.appearance)), animate);
             }
             // The cut below also runs in fallback: the solid tint is the shape, so it stays cut.
             // Gecko cuts the glass the same way flat and tilted: one box, one clip-path, no
