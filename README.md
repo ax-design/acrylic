@@ -80,7 +80,7 @@ Acrylic component uses custom properties to manage the style of the tile effect.
 
 **Default:** `black`
 
-**Description:** The color of the Acrylic texture if `dropback-filter` is not available for your user, PLEASE NOTICE THAT there isn't an option called `--acrylic-fallback-opacity`, the opacity of fallback Acrylic texture is always 1 for the concern of a11y. In forced colors mode (Windows High Contrast), the texture is always an opaque `Canvas` with no blur or noise, as WinUI does with `SystemColorWindowColor`. With reduced transparency (`prefers-reduced-transparency: reduce`) or after `setAlwaysUseFallback(true)` from `@ax-design/surface`, the texture falls back the same way, as WinUI's AcrylicBrush does with its FallbackColor.
+**Description:** The color of the Acrylic texture if `dropback-filter` is not available for your user, PLEASE NOTICE THAT there isn't an option called `--acrylic-fallback-opacity`, the opacity of fallback Acrylic texture is always 1 for the concern of a11y. In forced colors mode (Windows High Contrast), the texture is always an opaque `Canvas` with no blur or noise, as WinUI does with `SystemColorWindowColor`. With reduced transparency (`prefers-reduced-transparency: reduce`) or after `setAlwaysUseFallback(true)` from `@ax-design/surface`, the texture falls back the same way, as WinUI's AcrylicBrush does with its FallbackColor. Switching into or out of the fallback cross-fades over 167 ms like AcrylicBrush, and switches at once with reduced motion.
 
 ### --acrylic-noise-opacity
 
