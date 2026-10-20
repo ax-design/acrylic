@@ -153,6 +153,12 @@ Acrylic follows `motion()` of `ax-surface`: a 3D motion turns the glass with the
 * The glass covers the bounds of the shape, whatever the shape. The blur at the edges and the noise used to jump when a corner moved off a rounded rectangle.
 * 0.2.2: A surface with acrylic is a stacking context of its own. In Firefox, the glass of a surface inside an element with a `transform` used to turn clear as soon as it was pressed. In Firefox the glass is never transformed: it stays flat and is cut to the outline seen through the tilt, since any 3D transform in a surface turns its blur clear there. Use it with Surface 0.2.4, which tilts the rest of the surface with a 2D transform in Firefox.
 
+## Changes in 0.3
+
+* Built on Surface 0.3. The acrylic follows `motion()`: it turns with a 3D motion, and the opacity of the motion is applied to the acrylic elements themselves.
+* It falls back to its solid color with `prefers-reduced-transparency` or on request (`setAlwaysUseFallback()` of Surface), cross-fading into and out of it, and is solid `Canvas` in forced colors.
+* The noise is 128 px square, a quarter of the work when the first acrylic is made.
+
 ## Development
 
 ```bash
