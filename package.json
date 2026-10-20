@@ -1,6 +1,6 @@
 {
     "name": "@ax-design/acrylic",
-    "version": "0.3.0",
+    "version": "0.3.1",
     "description": "Web component that implements Acrylic texture of Axiom Design System.",
     "main": "build/main.js",
     "module": "es/index.js",
@@ -33,7 +33,7 @@
     ],
     "dependencies": {
         "@ax-design/shape": "^0.3.0",
-        "@ax-design/surface": "^0.3.0",
+        "@ax-design/surface": "^0.3.3",
         "@ax-design/typed-om": "^0.1.0"
     },
     "exports": {
