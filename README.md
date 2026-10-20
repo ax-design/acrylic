@@ -158,6 +158,7 @@ Acrylic follows `motion()` of `ax-surface`: a 3D motion turns the glass with the
 * Built on Surface 0.3. The acrylic follows `motion()`: it turns with a 3D motion, and the opacity of the motion is applied to the acrylic elements themselves.
 * It falls back to its solid color with `prefers-reduced-transparency` or on request (`setAlwaysUseFallback()` of Surface), cross-fading into and out of it, and is solid `Canvas` in forced colors.
 * The noise is 128 px square, a quarter of the work when the first acrylic is made.
+* 0.3.1: In Safari, shapes other than rounded rectangles are cut with `clip-path` too: the glass used to vanish while the shape changed quickly, the same defect Gecko had. Chrome keeps the mask.
 
 ## Development
 

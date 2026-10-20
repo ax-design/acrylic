@@ -3,9 +3,10 @@
 // ancestor a backdrop root, and the blur then sees nothing behind it.
 // Rounded rectangles use border-radius. Other shapes use a mask of the outline, not clip-path:
 // Chromium ignores an element's clip-path for its backdrop-filter when an ancestor clips its
-// overflow with a border-radius (a rounded card), and filters the whole box. Gecko uses
-// clip-path: while the mask image changes quickly (a shape animation, dragging a slider), it
-// draws stretches of frames with the whole element masked away, decoded images or not.
+// overflow with a border-radius (a rounded card), and filters the whole box. Gecko and WebKit
+// cut with clip-path instead: while the mask image changes quickly (a shape animation, dragging
+// a slider), they draw stretches of frames with the whole element masked away, decoded images
+// or not.
 // The tilt goes on the elements too: inside position: sticky, Firefox renders a backdrop-filter
 // under an animated 3D transform of an ancestor with the wrong backdrop.
 // The surface is a stacking context of its own (isolation: isolate, a :host rule, so any style
@@ -71,6 +72,23 @@ let clipPaths: boolean | null = null;
 function useClipPath(): boolean {
     if (clipPaths === null) clipPaths = supports('-moz-appearance', 'none') && supports('clip-path', 'path("M0 0H1V1Z")');
     return clipPaths;
+}
+
+// WebKit, by the vendor it reports: every browser built on it, including the ones on iOS, says
+// Apple Computer, Inc., and the feature probes above do not separate it from Chromium. Safari
+// replaces a mask image as Gecko does, with stretches of frames where the whole element is
+// masked away, so a shape animation dropped the glass there too. A backdrop-filter cut with
+// clip-path: path() keeps drawing there, so a shape is cut that way rather than with a mask.
+let webkit: boolean | null = null;
+function isWebKit(): boolean {
+    if (webkit === null) webkit = typeof navigator !== 'undefined' && navigator.vendor === 'Apple Computer, Inc.';
+    return webkit;
+}
+
+// Whether a shape can be cut with clip-path: path() instead of a mask. Chromium cannot (see the
+// note at the top), Gecko and WebKit can.
+function cutWithClipPath(): boolean {
+    return supports('clip-path', 'path("M0 0H1V1Z")') && (useClipPath() || isWebKit());
 }
 
 // The outline as an SVG image for mask-image. A data URL references no id, so it works with a
@@ -332,7 +350,7 @@ export function createAcrylicLayer(): SurfaceLayer {
             rs.setProperty('--acrylic-shape-radius', radii.map((r) => `${r}px`).join(' '));
         } else {
             rs.removeProperty('--acrylic-shape-radius');
-            if (useClipPath()) clip = `path("${d}")`;
+            if (cutWithClipPath()) clip = `path("${d}")`;
             else mask = maskImage(d, width, height);
         }
         // The layer box is the paint box, which other layers (an elevation shadow) may make

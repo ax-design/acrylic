@@ -107,10 +107,12 @@ async function run() {
     });
     register();
     await frames(8);
-    // Gecko cuts with clip-path, the other engines with a mask or border-radius (see layer.ts).
-    // There the glass never transforms: its box is the shape's bounds and a margin, and the cut
+    // Gecko and WebKit cut with clip-path, Chromium with a mask or border-radius (see layer.ts).
+    // Gecko never transforms the glass: its box is the shape's bounds and a margin, and the cut
     // is the outline seen through the tilt.
     const gecko = CSS.supports('-moz-appearance', 'none') && CSS.supports('clip-path', 'path("M0 0H1V1Z")');
+    const webkit = navigator.vendor === 'Apple Computer, Inc.';
+    const clipCut = gecko || (webkit && CSS.supports('clip-path', 'path("M0 0H1V1Z")'));
     const GECKO_MARGIN = 8;
     for (const id of ['a', 's']) {
         const root = document.getElementById(id)!.shadowRoot!;
@@ -127,7 +129,7 @@ async function run() {
             check(`${id}: round corners use border-radius`, clip === '' && radius === '24px', `${clip} ${radius}`);
         } else {
             const clipPath = filter!.style.getPropertyValue('clip-path');
-            if (gecko) check(`${id}: the blur element is clipped to the shape`, /^path\(/.test(clipPath) && clip === '', `${clipPath.slice(0, 40)} | ${clip.slice(0, 20)}`);
+            if (clipCut) check(`${id}: the blur element is clipped to the shape`, /^path\(/.test(clipPath) && clip === '', `${clipPath.slice(0, 40)} | ${clip.slice(0, 20)}`);
             else check(`${id}: the blur element is masked to the shape`, /^url\("?data:image\/svg\+xml/.test(clip) && clipPath === '', clip.slice(0, 40));
         }
         if (fallback) {
