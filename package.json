@@ -34,7 +34,7 @@
     "dependencies": {
         "@ax-design/shape": "^0.3.0",
         "@ax-design/surface": "^0.3.3",
-        "@ax-design/typed-om": "^0.1.0"
+        "@ax-design/typed-om": "^0.2.0"
     },
     "exports": {
         ".": {
