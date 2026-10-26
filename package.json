@@ -14,7 +14,7 @@
     "devDependencies": {
         "playwright": "^1.64.0",
         "pngjs": "7.0.0",
-        "typescript": "^5.6.0"
+        "typescript": "^7.0.2"
     },
     "scripts": {
         "build": "bun scripts/build.ts",
