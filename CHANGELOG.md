@@ -2,6 +2,10 @@
 
 All notable changes to this package are documented in this file.
 
+## 0.3.2
+
+- Depends on @ax-design/surface 0.4 and typed-om 0.3 (no duplicate copies next to packages that use them).
+
 ## 0.3.1
 
 - In Safari, shapes other than rounded rectangles are cut with `clip-path` too: the glass used to vanish while the shape changed quickly, the same defect Gecko had. Chrome keeps the mask.
